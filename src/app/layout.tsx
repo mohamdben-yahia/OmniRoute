@@ -1,10 +1,61 @@
 import { Inter } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { ThemeProvider } from "@/shared/components/ThemeProvider";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, getLocale } from "next-intl/server";
 import { RTL_LOCALES } from "@/i18n/config";
 import { getSettings } from "@/lib/db/settings";
+
+const EXTENSION_ATTR_CLEANUP_SCRIPT = `
+(() => {
+  const attrNames = ["bis_skin_checked"];
+  const selector = attrNames.map((name) => "[" + name + "]").join(",");
+
+  const clean = (root) => {
+    if (!root || typeof root.querySelectorAll !== "function") return;
+
+    if (typeof root.removeAttribute === "function") {
+      for (const attrName of attrNames) {
+        root.removeAttribute(attrName);
+      }
+    }
+
+    for (const element of root.querySelectorAll(selector)) {
+      for (const attrName of attrNames) {
+        element.removeAttribute(attrName);
+      }
+    }
+  };
+
+  clean(document.documentElement);
+
+  const observer = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      if (
+        mutation.type === "attributes" &&
+        mutation.attributeName &&
+        attrNames.includes(mutation.attributeName) &&
+        mutation.target &&
+        typeof mutation.target.removeAttribute === "function"
+      ) {
+        mutation.target.removeAttribute(mutation.attributeName);
+      }
+
+      for (const node of mutation.addedNodes) {
+        clean(node);
+      }
+    }
+  });
+
+  observer.observe(document.documentElement, {
+    subtree: true,
+    childList: true,
+    attributes: true,
+    attributeFilter: attrNames,
+  });
+})();
+`;
 
 const inter = Inter({
   subsets: ["latin"],
@@ -35,6 +86,9 @@ export default async function RootLayout({ children }) {
   return (
     <html lang={locale} dir={isRtl ? "rtl" : "ltr"} suppressHydrationWarning>
       <head>
+        <Script id="extension-attr-cleanup" strategy="beforeInteractive">
+          {EXTENSION_ATTR_CLEANUP_SCRIPT}
+        </Script>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}

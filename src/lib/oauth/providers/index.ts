@@ -16,7 +16,7 @@ import { gemini } from "./gemini";
 import { antigravity } from "./antigravity";
 import { qoder } from "./qoder";
 import { qwen } from "./qwen";
-import { windsurf } from "./windsurf";
+import { windsurf } from "./windsurf.ts";
 import { kimiCoding } from "./kimi-coding";
 import { github } from "./github";
 import { kiro } from "./kiro";

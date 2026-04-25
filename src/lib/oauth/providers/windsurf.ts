@@ -7,74 +7,37 @@ function getDisabledMessage(config: typeof WINDSURF_CONFIG): string {
   );
 }
 
-function getManualTokenMessage(config: typeof WINDSURF_CONFIG): string {
-  return (
-    config?.manualTokenMessage ||
-    "Use the Windsurf auth token page, then paste the token into OmniRoute for experimental exchange into a Windsurf API key."
-  );
-}
-
 export const windsurf = {
   config: WINDSURF_CONFIG,
   flowType: "authorization_code_pkce",
   buildAuthUrl: (config, redirectUri, state, codeChallenge) => {
-    if (!config?.enabled && config?.authTokenUrl) {
-      return config.authTokenUrl;
-    }
-
     if (!config?.enabled || !config?.authorizeUrl || !config?.clientId || !config?.redirectUri) {
       return null;
     }
 
+    const resolvedRedirectUri = redirectUri || config.redirectUri;
+
     const params = new URLSearchParams({
       client_id: config.clientId,
       response_type: "code",
-      redirect_uri: config.redirectUri,
+      redirect_uri: resolvedRedirectUri,
       scope: Array.isArray(config.scopes) ? config.scopes.join(" ") : "",
       state,
       code_challenge: codeChallenge,
       code_challenge_method: config.codeChallengeMethod || "S256",
     });
 
-    if (redirectUri) {
-      params.set("redirect_uri", config.redirectUri);
-    }
-
     return `${config.authorizeUrl}?${params.toString()}`;
   },
   exchangeToken: async (config, code, _redirectUri, codeVerifier) => {
     const trimmedCode = typeof code === "string" ? code.trim() : "";
-    if (!trimmedCode) {
-      throw new Error("Windsurf auth token is required.");
-    }
-
-    if (!config?.enabled && config?.registerTokenUrl) {
-      const response = await fetch(config.registerTokenUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({ firebase_id_token: trimmedCode }),
-      });
-
-      const rawText = await response.text();
-      let data: Record<string, unknown> = {};
-      try {
-        data = rawText ? JSON.parse(rawText) : {};
-      } catch {
-        throw new Error(`Windsurf token exchange parse error: ${rawText || "empty response"}`);
-      }
-
-      if (!response.ok) {
-        throw new Error(`Windsurf token exchange failed: ${rawText}`);
-      }
-
-      return data;
-    }
 
     if (!config?.enabled || !config?.tokenUrl || !config?.clientId || !config?.redirectUri) {
       throw new Error(getDisabledMessage(config));
+    }
+
+    if (!trimmedCode) {
+      throw new Error("Windsurf authorization code is required.");
     }
 
     const bodyParams: Record<string, string> = {
@@ -131,17 +94,16 @@ export const windsurf = {
       ...(typeof tokens.api_server_url === "string" && tokens.api_server_url.trim().length > 0
         ? { apiServerUrl: tokens.api_server_url.trim() }
         : {}),
-      authFlow:
-        typeof tokens.api_key === "string" ? "windsurf-manual-auth-token" : "windsurf-oauth-pkce",
+      authFlow: "windsurf-oauth-pkce",
     },
     scope: typeof tokens.scope === "string" ? tokens.scope : undefined,
   }),
   metadata: {
-    supportLevel: "experimental-manual-token",
+    supportLevel: "oauth-ready-placeholder",
     observedInternalAuth: true,
     thirdPartyOAuthSupported: false,
-    manualTokenSupported: true,
-    manualTokenMessage: getManualTokenMessage(WINDSURF_CONFIG),
+    manualTokenSupported: false,
+    disabledMessage: getDisabledMessage(WINDSURF_CONFIG),
   },
 };
 

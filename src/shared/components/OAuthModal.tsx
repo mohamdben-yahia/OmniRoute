@@ -9,6 +9,7 @@ import Input from "./Input";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 
 const GOOGLE_OAUTH_PROVIDERS = new Set(["antigravity", "gemini-cli"]);
+const MANUAL_TOKEN_PROVIDERS = new Set(["windsurf"]);
 
 type OAuthModalProps = {
   isOpen: boolean;
@@ -70,6 +71,8 @@ export default function OAuthModal({
     }
   }, []);
 
+  const isManualTokenProvider = provider ? MANUAL_TOKEN_PROVIDERS.has(provider) : false;
+
   // Define all useCallback hooks BEFORE the useEffects that reference them
 
   // Exchange tokens
@@ -77,7 +80,7 @@ export default function OAuthModal({
     async (code, state) => {
       if (!authData) return;
       try {
-        if (!authData.redirectUri || !authData.codeVerifier) {
+        if (!isManualTokenProvider && (!authData.redirectUri || !authData.codeVerifier)) {
           throw new Error(
             "OAuth session is incomplete (missing redirect URI or code verifier). Restart the connection and try again."
           );
@@ -91,7 +94,7 @@ export default function OAuthModal({
           body: JSON.stringify({
             code,
             redirectUri: authData.redirectUri,
-            codeVerifier: authData.codeVerifier,
+            ...(authData.codeVerifier ? { codeVerifier: authData.codeVerifier } : {}),
             ...(normalizedState ? { state: normalizedState } : {}),
           }),
         });
@@ -139,7 +142,7 @@ export default function OAuthModal({
         setStep("error");
       }
     },
-    [authData, provider, onSuccess]
+    [authData, isManualTokenProvider, provider, onSuccess]
   );
 
   // Poll for device code token
@@ -194,6 +197,29 @@ export default function OAuthModal({
     if (!provider) return;
     try {
       setError(null);
+
+      if (isManualTokenProvider) {
+        const redirectUri = window.location.origin;
+        const res = await fetch(
+          `/api/oauth/${provider}/authorize?redirect_uri=${encodeURIComponent(redirectUri)}`
+        );
+        const data = await res.json();
+        if (!res.ok) {
+          const errMsg =
+            typeof data.error === "object" && data.error !== null
+              ? ((data.error as Record<string, unknown>).message as string) ||
+                JSON.stringify(data.error)
+              : data.error || "Authorization failed";
+          throw new Error(errMsg);
+        }
+
+        setAuthData({ ...data, redirectUri });
+        setStep("input");
+        if (data.authUrl) {
+          window.open(data.authUrl, "oauth_auth");
+        }
+        return;
+      }
 
       // Device code flow (GitHub, Qwen, Kiro, Kimi Coding, KiloCode)
       if (
@@ -368,7 +394,7 @@ export default function OAuthModal({
       setError(err.message);
       setStep("error");
     }
-  }, [provider, isLocalhost, isTrueLocalhost, startPolling, onSuccess]);
+  }, [provider, isLocalhost, isTrueLocalhost, isManualTokenProvider, startPolling, onSuccess]);
 
   // Reset guard when modal closes
   useEffect(() => {

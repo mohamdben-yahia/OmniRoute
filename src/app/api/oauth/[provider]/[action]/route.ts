@@ -231,7 +231,7 @@ export async function POST(
       const normalizedState = typeof state === "string" && state.length > 0 ? state : undefined;
       const providerData = getProvider(provider);
 
-      if (providerData.config?.enabled === false && provider !== "windsurf") {
+      if (providerData.config?.enabled === false) {
         return NextResponse.json(
           {
             success: false,
@@ -291,28 +291,6 @@ export async function POST(
             return safeEqual(existingWorkspace, tokenData.providerSpecificData.workspaceId);
           }
           return true;
-        });
-        const matchId = typeof match?.id === "string" ? match.id : null;
-        if (matchId) {
-          connection = await updateProviderConnection(matchId, {
-            ...tokenData,
-            expiresAt,
-            testStatus: "active",
-            isActive: true,
-          });
-        }
-      }
-      if (!connection && provider === "windsurf") {
-        const existing = await getProviderConnections({ provider });
-        const match = existing.find((c: any) => {
-          if (c.authType !== "oauth") return false;
-          return (
-            safeEqual(c.providerSpecificData?.authFlow, tokenData.providerSpecificData?.authFlow) &&
-            safeEqual(
-              c.providerSpecificData?.apiServerUrl,
-              tokenData.providerSpecificData?.apiServerUrl
-            )
-          );
         });
         const matchId = typeof match?.id === "string" ? match.id : null;
         if (matchId) {

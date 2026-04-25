@@ -8,7 +8,7 @@ import {
 import { testProxySchema } from "@/shared/validation/schemas";
 import { isValidationFailure, validateBody } from "@/shared/validation/helpers";
 import { createErrorResponse, createErrorResponseFromUnknown } from "@/lib/api/errorResponse";
-import { getProxyById } from "@/lib/localDb";
+import { getProxyById } from "@/lib/db/proxies";
 
 const BASE_SUPPORTED_PROXY_TYPES = new Set(["http", "https"]);
 

@@ -74,6 +74,21 @@ test.after(() => {
   }
 });
 
+test("GET /api/oauth/windsurf/authorize exposes the Windsurf manual auth token URL", async () => {
+  const request = new Request(
+    "http://localhost/api/oauth/windsurf/authorize?redirect_uri=http%3A%2F%2Flocalhost%2Fcallback"
+  );
+
+  const response = await oauthRoute.GET(request, {
+    params: Promise.resolve({ provider: "windsurf", action: "authorize" }),
+  });
+
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.equal(payload.authUrl, "https://windsurf.com/editor/show-auth-token?workflow=");
+  assert.equal(payload.supported, true);
+});
+
 test("POST /api/oauth/windsurf/exchange creates a Windsurf oauth connection from a manual auth token", async () => {
   const request = new Request("http://localhost/api/oauth/windsurf/exchange", {
     method: "POST",
@@ -147,151 +162,4 @@ test("POST /api/oauth/windsurf/exchange rejects invalid JSON body", async () => 
   const payload = await response.json();
   assert.equal(payload.error.message, "Invalid request");
   assert.deepEqual(payload.error.details, [{ field: "body", message: "Invalid JSON body" }]);
-});
-
-test("POST /api/oauth/windsurf/exchange upserts the existing Windsurf connection on second exchange", async () => {
-  let exchangeCount = 0;
-  globalThis.fetch = async (input: RequestInfo | URL) => {
-    const url = String(input);
-    if (url !== "https://api.codeium.com/register_user/") {
-      throw new Error(`Unexpected fetch: ${url}`);
-    }
-
-    exchangeCount += 1;
-    const payload =
-      exchangeCount === 1
-        ? {
-            api_key: "windsurf-api-key-route-1",
-            name: "Windsurf Route User One",
-            api_server_url: "https://server.codeium.com",
-          }
-        : {
-            api_key: "windsurf-api-key-route-2",
-            name: "Windsurf Route User Two",
-            api_server_url: "https://server.codeium.com",
-          };
-
-    return new Response(JSON.stringify(payload), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
-  };
-
-  const firstRequest = new Request("http://localhost/api/oauth/windsurf/exchange", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      code: "firebase-id-token-first",
-      redirectUri: "http://localhost/callback",
-      codeVerifier: "manual-token-flow",
-    }),
-  });
-
-  const firstResponse = await oauthRoute.POST(firstRequest, {
-    params: Promise.resolve({ provider: "windsurf", action: "exchange" }),
-  });
-  assert.equal(firstResponse.status, 200);
-
-  const firstConnections = await localDb.getProviderConnections({ provider: "windsurf" });
-  assert.equal(firstConnections.length, 1);
-  const originalId = (firstConnections[0] as Record<string, any>).id;
-
-  const secondRequest = new Request("http://localhost/api/oauth/windsurf/exchange", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      code: "firebase-id-token-second",
-      redirectUri: "http://localhost/callback",
-      codeVerifier: "manual-token-flow",
-    }),
-  });
-
-  const secondResponse = await oauthRoute.POST(secondRequest, {
-    params: Promise.resolve({ provider: "windsurf", action: "exchange" }),
-  });
-
-  assert.equal(secondResponse.status, 200);
-  const payload = await secondResponse.json();
-  assert.equal(payload.success, true);
-
-  const connections = await localDb.getProviderConnections({ provider: "windsurf" });
-  assert.equal(connections.length, 1);
-
-  const updated = connections[0] as Record<string, any>;
-  assert.equal(updated.id, originalId);
-  assert.equal(updated.apiKey, "windsurf-api-key-route-2");
-  assert.equal(updated.accessToken, "windsurf-api-key-route-2");
-  assert.equal(updated.name, "Windsurf Route User Two");
-  assert.equal(updated.providerSpecificData?.authFlow, "windsurf-manual-auth-token");
-  assert.equal(updated.providerSpecificData?.apiServerUrl, "https://server.codeium.com");
-});
-
-test("POST /api/oauth/windsurf/exchange creates a second connection when apiServerUrl differs", async () => {
-  let exchangeCount = 0;
-  globalThis.fetch = async (input: RequestInfo | URL) => {
-    const url = String(input);
-    if (url !== "https://api.codeium.com/register_user/") {
-      throw new Error(`Unexpected fetch: ${url}`);
-    }
-
-    exchangeCount += 1;
-    const payload =
-      exchangeCount === 1
-        ? {
-            api_key: "windsurf-api-key-route-a",
-            name: "Windsurf Route User A",
-            api_server_url: "https://server.codeium.com",
-          }
-        : {
-            api_key: "windsurf-api-key-route-b",
-            name: "Windsurf Route User B",
-            api_server_url: "https://eu.windsurf.com/_route/api_server",
-          };
-
-    return new Response(JSON.stringify(payload), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
-  };
-
-  const firstRequest = new Request("http://localhost/api/oauth/windsurf/exchange", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      code: "firebase-id-token-first-distinct",
-      redirectUri: "http://localhost/callback",
-      codeVerifier: "manual-token-flow",
-    }),
-  });
-
-  const firstResponse = await oauthRoute.POST(firstRequest, {
-    params: Promise.resolve({ provider: "windsurf", action: "exchange" }),
-  });
-  assert.equal(firstResponse.status, 200);
-
-  const secondRequest = new Request("http://localhost/api/oauth/windsurf/exchange", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      code: "firebase-id-token-second-distinct",
-      redirectUri: "http://localhost/callback",
-      codeVerifier: "manual-token-flow",
-    }),
-  });
-
-  const secondResponse = await oauthRoute.POST(secondRequest, {
-    params: Promise.resolve({ provider: "windsurf", action: "exchange" }),
-  });
-  assert.equal(secondResponse.status, 200);
-
-  const connections = await localDb.getProviderConnections({ provider: "windsurf" });
-  assert.equal(connections.length, 2);
-
-  const apiServerUrls = connections
-    .map((connection) => (connection as Record<string, any>).providerSpecificData?.apiServerUrl)
-    .sort();
-  assert.deepEqual(apiServerUrls, [
-    "https://eu.windsurf.com/_route/api_server",
-    "https://server.codeium.com",
-  ]);
 });

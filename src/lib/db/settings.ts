@@ -4,10 +4,7 @@
 
 import { getDbInstance } from "./core";
 import { backupDbFile } from "./backup";
-import { PROVIDER_ID_TO_ALIAS } from "@omniroute/open-sse/config/providerModels.ts";
 import { invalidateDbCache } from "./readCache";
-import { resolveProxyForConnectionFromRegistry } from "./proxies";
-import { getComboModelProvider as getComboEntryProvider } from "@/lib/combos/steps";
 
 type JsonRecord = Record<string, unknown>;
 type PricingModels = Record<string, JsonRecord>;
@@ -315,21 +312,31 @@ export function clearAllLKGP(): void {
 // ──────────────── Proxy Config ────────────────
 
 const DEFAULT_PROXY_CONFIG: ProxyConfig = { global: null, providers: {}, combos: {}, keys: {} };
-const ALIAS_TO_PROVIDER_ID = Object.entries(PROVIDER_ID_TO_ALIAS).reduce(
-  (acc, [providerId, alias]) => {
-    if (alias) acc[alias] = providerId;
-    acc[providerId] = providerId;
-    return acc;
-  },
-  {} as Record<string, string>
-);
+let aliasToProviderIdCache: Record<string, string> | null = null;
 
-function resolveProviderAliasOrId(providerOrAlias: string): string {
-  if (typeof providerOrAlias !== "string") return providerOrAlias;
-  return ALIAS_TO_PROVIDER_ID[providerOrAlias] || providerOrAlias;
+async function getAliasToProviderId(): Promise<Record<string, string>> {
+  if (!aliasToProviderIdCache) {
+    const { PROVIDER_ID_TO_ALIAS } = await import("@omniroute/open-sse/config/providerModels");
+    aliasToProviderIdCache = Object.entries(PROVIDER_ID_TO_ALIAS).reduce(
+      (acc, [providerId, alias]) => {
+        if (alias) acc[alias] = providerId;
+        acc[providerId] = providerId;
+        return acc;
+      },
+      {} as Record<string, string>
+    );
+  }
+  return aliasToProviderIdCache;
 }
 
-function getComboModelProvider(modelEntry: unknown): string | null {
+async function resolveProviderAliasOrId(providerOrAlias: string): Promise<string> {
+  if (typeof providerOrAlias !== "string") return providerOrAlias;
+  const aliasToProviderId = await getAliasToProviderId();
+  return aliasToProviderId[providerOrAlias] || providerOrAlias;
+}
+
+async function getComboModelProvider(modelEntry: unknown): Promise<string | null> {
+  const { getComboModelProvider: getComboEntryProvider } = await import("@/lib/combos/steps");
   const providerOrAlias = getComboEntryProvider(modelEntry);
   return providerOrAlias ? resolveProviderAliasOrId(providerOrAlias) : null;
 }
@@ -442,6 +449,7 @@ export async function deleteProxyForLevel(level: string, id: string | null) {
 }
 
 export async function resolveProxyForConnection(connectionId: string) {
+  const { resolveProxyForConnectionFromRegistry } = await import("./proxies");
   const registryResolved = await resolveProxyForConnectionFromRegistry(connectionId);
   if (registryResolved?.proxy) {
     return registryResolved;
@@ -473,9 +481,13 @@ export async function resolveProxyForConnection(connectionId: string) {
             if (!comboRaw) continue;
             const combo = toRecord(JSON.parse(comboRaw));
             const comboModels = Array.isArray(combo.models) ? combo.models : [];
-            const usesProvider = comboModels.some(
-              (entry) => getComboModelProvider(entry) === provider
-            );
+            let usesProvider = false;
+            for (const entry of comboModels) {
+              if ((await getComboModelProvider(entry)) === provider) {
+                usesProvider = true;
+                break;
+              }
+            }
             if (usesProvider) {
               return { proxy: config.combos[comboId], level: "combo", levelId: comboId };
             }

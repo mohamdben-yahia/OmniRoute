@@ -366,6 +366,7 @@ test("Windsurf uses manual auth token fallback when browser OAuth is disabled", 
   assert.equal(REGISTRY.windsurf.runtimeCategory, "apikey");
   assert.equal(REGISTRY.windsurf.oauth.clientIdEnv, "WINDSURF_OAUTH_CLIENT_ID");
   assert.equal(PROVIDERS.windsurf.metadata.supportLevel, "experimental-manual-token");
+  assert.equal(PROVIDERS.windsurf.metadata.manualTokenSupported, true);
 
   useFetchSequence([jsonResponse({ api_key: "windsurf-api-key", name: "Windsurf User" })]);
 
