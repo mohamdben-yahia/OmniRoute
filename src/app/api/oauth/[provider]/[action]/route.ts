@@ -42,6 +42,76 @@ function safeEqual(a: string | null | undefined, b: string | null | undefined): 
   return timingSafeEqual(ba, bb);
 }
 
+function parseWindsurfCallbackUrl(callbackUrl: string, expectedState?: string) {
+  let parsed: URL;
+  try {
+    parsed = new URL(callbackUrl);
+  } catch {
+    return {
+      ok: false as const,
+      error: {
+        message: "Invalid request",
+        details: [{ field: "callbackUrl", message: "Paste the full callback URL." }],
+      },
+    };
+  }
+
+  const fragmentParams = parsed.hash
+    .replace(/^#/, "")
+    .split("&")
+    .reduce<Record<string, string>>((acc, pair) => {
+      if (!pair) return acc;
+      const [rawKey, rawValue = ""] = pair.split("=", 2);
+      const key = decodeURIComponent(rawKey || "").trim();
+      if (!key) return acc;
+      acc[key] = decodeURIComponent(rawValue.replace(/\+/g, " ")).trim();
+      return acc;
+    }, {});
+
+  const code =
+    parsed.searchParams.get("code")?.trim() ||
+    parsed.searchParams.get("id_token")?.trim() ||
+    parsed.searchParams.get("access_token")?.trim() ||
+    fragmentParams.id_token ||
+    fragmentParams.access_token ||
+    fragmentParams.code ||
+    "";
+  const state = parsed.searchParams.get("state")?.trim() || fragmentParams.state || undefined;
+
+  if (!code) {
+    return {
+      ok: false as const,
+      error: {
+        message: "Invalid request",
+        details: [
+          {
+            field: "callbackUrl",
+            message:
+              "Callback URL must include a code, id_token, or access_token parameter. Open the Windsurf auth token page and paste the full callback URL after it redirects.",
+          },
+        ],
+      },
+    };
+  }
+
+  if (expectedState && !safeEqual(state, expectedState)) {
+    return {
+      ok: false as const,
+      error: {
+        message: "Invalid request",
+        details: [
+          {
+            field: "state",
+            message: "Callback URL state does not match the current auth session.",
+          },
+        ],
+      },
+    };
+  }
+
+  return { ok: true as const, code, state };
+}
+
 /**
  * Dynamic OAuth API Route
  * Handles: authorize, exchange, device-code, poll, start-callback-server, poll-callback
@@ -227,11 +297,27 @@ export async function POST(
     }
 
     if (action === "exchange") {
-      const { code, redirectUri, codeVerifier, state } = body;
-      const normalizedState = typeof state === "string" && state.length > 0 ? state : undefined;
+      let { code, callbackUrl, redirectUri, codeVerifier, state } = body;
       const providerData = getProvider(provider);
 
-      if (providerData.config?.enabled === false) {
+      let windsurfUsedCallbackUrl = false;
+      if (provider === "windsurf" && callbackUrl) {
+        const parsed = parseWindsurfCallbackUrl(
+          callbackUrl,
+          typeof state === "string" ? state : undefined
+        );
+        if (!parsed.ok) {
+          return NextResponse.json({ error: parsed.error }, { status: 400 });
+        }
+
+        code = parsed.code;
+        state = parsed.state ?? state;
+        windsurfUsedCallbackUrl = true;
+      }
+
+      const normalizedState = typeof state === "string" && state.length > 0 ? state : undefined;
+
+      if (providerData.config?.enabled === false && provider !== "windsurf") {
         return NextResponse.json(
           {
             success: false,
@@ -267,6 +353,13 @@ export async function POST(
       const tokenData = await runWithProxyContext(proxy, () =>
         exchangeTokens(provider, code, redirectUri, codeVerifier, normalizedState)
       );
+
+      if (provider === "windsurf" && windsurfUsedCallbackUrl) {
+        tokenData.providerSpecificData = {
+          ...(tokenData.providerSpecificData || {}),
+          authFlow: "windsurf-oauth-pkce",
+        };
+      }
 
       // Normalize: if name is missing, use email or displayName as fallback so accounts
       // always show a real label (e.g. user@gmail.com) instead of "Account #abc123"

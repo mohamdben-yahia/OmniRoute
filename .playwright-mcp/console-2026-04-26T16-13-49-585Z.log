@@ -1,0 +1,105 @@
+[    1497ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "new-password"): (More info: https://goo.gl/9p2vKq) %o @ http://localhost:20128/login:0
+[    9803ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:20128/dashboard/usage?_rsc=18t7j:0
+[   13988ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:20128/api/system/env/repair:0
+[   17810ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:20128/providers/windsurf.png:0
+[  181690ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/monitoring/health:0
+[  191731ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/sync/cloud:0
+[  191732ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/health/degradation?summary=true:0
+[  191732ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/monitoring/health:0
+[  191740ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/token-health:0
+[  191957ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/sync/cloud:0
+[  201664ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/monitoring/health:0
+[  211675ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/monitoring/health:0
+[  222383ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/sync/cloud:0
+[  222383ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/monitoring/health:0
+[  224724ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/sync/cloud:0
+[  231645ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/monitoring/health:0
+[  244766ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/monitoring/health:0
+[  251637ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/sync/cloud:0
+[  251639ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/monitoring/health:0
+[  251640ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/health/degradation?summary=true:0
+[  251640ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/token-health:0
+[  251882ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/sync/cloud:0
+[  261667ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/monitoring/health:0
+[  271783ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/monitoring/health:0
+[  284547ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/sync/cloud:0
+[  284558ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/monitoring/health:0
+[  284604ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/sync/cloud:0
+[  292646ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/monitoring/health:0
+[  301678ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/monitoring/health:0
+[  631663ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/monitoring/health:0
+[  641663ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/sync/cloud:0
+[  641663ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/monitoring/health:0
+[  641907ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/sync/cloud:0
+[  651648ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/monitoring/health:0
+[  661659ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/monitoring/health:0
+[  671649ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/sync/cloud:0
+[  671664ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/monitoring/health:0
+[  671664ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/health/degradation?summary=true:0
+[  671664ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/token-health:0
+[  671885ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/sync/cloud:0
+[  681660ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/monitoring/health:0
+[  691681ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/monitoring/health:0
+[  701640ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/sync/cloud:0
+[  701664ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/monitoring/health:0
+[  701917ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/sync/cloud:0
+[  711658ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/monitoring/health:0
+[  721638ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/monitoring/health:0
+[  731628ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/sync/cloud:0
+[  731660ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/monitoring/health:0
+[  731661ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/health/degradation?summary=true:0
+[  731661ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/token-health:0
+[  731896ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/sync/cloud:0
+[  741654ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/monitoring/health:0
+[  751648ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/monitoring/health:0
+[  761652ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/sync/cloud:0
+[  761652ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/monitoring/health:0
+[  761889ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/sync/cloud:0
+[  771713ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/monitoring/health:0
+[  781796ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/monitoring/health:0
+[  791770ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/sync/cloud:0
+[  791771ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/health/degradation?summary=true:0
+[  791771ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/token-health:0
+[  791771ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/monitoring/health:0
+[  792011ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/sync/cloud:0
+[  801663ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/monitoring/health:0
+[  811871ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/monitoring/health:0
+[  821622ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/sync/cloud:0
+[  821654ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/monitoring/health:0
+[  821897ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/sync/cloud:0
+[  832314ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/monitoring/health:0
+[  842732ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/monitoring/health:0
+[  851719ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/sync/cloud:0
+[  851720ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/health/degradation?summary=true:0
+[  851720ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/monitoring/health:0
+[  851722ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/token-health:0
+[  851944ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/sync/cloud:0
+[  861654ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/monitoring/health:0
+[  871661ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/monitoring/health:0
+[ 1551641ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/monitoring/health:0
+[ 1560880ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/api/monitoring/health:0
+[ 1561146ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/dashboard/cli-tools?_rsc=1httd:0
+[ 1564040ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/dashboard/providers?_rsc=o0sd3:0
+[ 1564040ms] [ERROR] Failed to fetch RSC payload for http://localhost:20128/dashboard/providers. Falling back to browser navigation. TypeError: Failed to fetch
+    at T (http://localhost:20128/_next/static/chunks/0tfxau8c~fd3q.js:1:94664)
+    at E (http://localhost:20128/_next/static/chunks/0tfxau8c~fd3q.js:1:92812)
+    at E (http://localhost:20128/_next/static/chunks/0tfxau8c~fd3q.js:1:114601)
+    at http://localhost:20128/_next/static/chunks/0tfxau8c~fd3q.js:1:113522
+    at _ (http://localhost:20128/_next/static/chunks/0tfxau8c~fd3q.js:1:113560)
+    at s (http://localhost:20128/_next/static/chunks/0tfxau8c~fd3q.js:1:118766)
+    at s (http://localhost:20128/_next/static/chunks/0tfxau8c~fd3q.js:2:3752)
+    at Object.action (http://localhost:20128/_next/static/chunks/0tfxau8c~fd3q.js:2:6687)
+    at _ (http://localhost:20128/_next/static/chunks/0tfxau8c~fd3q.js:2:5882)
+    at http://localhost:20128/_next/static/chunks/0tfxau8c~fd3q.js:2:6424 @ http://localhost:20128/_next/static/chunks/0tfxau8c~fd3q.js:0
+[ 1564056ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:20128/dashboard/api-manager?_rsc=o0sd3:0
+[ 1564056ms] [ERROR] Failed to fetch RSC payload for http://localhost:20128/dashboard/api-manager. Falling back to browser navigation. TypeError: Failed to fetch
+    at T (http://localhost:20128/_next/static/chunks/0tfxau8c~fd3q.js:1:94664)
+    at E (http://localhost:20128/_next/static/chunks/0tfxau8c~fd3q.js:1:92812)
+    at E (http://localhost:20128/_next/static/chunks/0tfxau8c~fd3q.js:1:114601)
+    at http://localhost:20128/_next/static/chunks/0tfxau8c~fd3q.js:1:113522
+    at _ (http://localhost:20128/_next/static/chunks/0tfxau8c~fd3q.js:1:113560)
+    at s (http://localhost:20128/_next/static/chunks/0tfxau8c~fd3q.js:1:118766)
+    at s (http://localhost:20128/_next/static/chunks/0tfxau8c~fd3q.js:2:3752)
+    at Object.action (http://localhost:20128/_next/static/chunks/0tfxau8c~fd3q.js:2:6687)
+    at _ (http://localhost:20128/_next/static/chunks/0tfxau8c~fd3q.js:2:5882)
+    at http://localhost:20128/_next/static/chunks/0tfxau8c~fd3q.js:2:6564 @ http://localhost:20128/_next/static/chunks/0tfxau8c~fd3q.js:0

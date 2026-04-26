@@ -159,6 +159,10 @@ function useFetchSequence(sequence) {
   };
 }
 
+function asRequestInit(init?: RequestInit): RequestInit {
+  return init ?? {};
+}
+
 test.afterEach(() => {
   globalThis.fetch = originalFetch;
 });
@@ -207,7 +211,7 @@ test("every registered OAuth provider has a valid config object, flow type and t
     assert.ok(allowedFlowTypes.has(provider.flowType), `${providerId} has unsupported flowType`);
     assert.equal(typeof provider.mapTokens, "function", `${providerId} must expose mapTokens`);
 
-    const mapped = provider.mapTokens({});
+    const mapped = provider.mapTokens({}, undefined);
     assert.ok(
       mapped && typeof mapped === "object",
       `${providerId} mapTokens must return an object`
@@ -344,20 +348,28 @@ test("Qoder remains a safe special case when browser OAuth is disabled", () => {
   assert.ok(authUrl.startsWith("https://"));
 });
 
-test("Windsurf uses manual auth token fallback when browser OAuth is disabled", async () => {
+test("Windsurf uses browser callback URL exchange when browser OAuth is disabled", async () => {
   assert.equal(WINDSURF_CONFIG.enabled, false);
   assert.equal(WINDSURF_CONFIG.supportLevel, "oauth-ready-placeholder");
   assert.equal(WINDSURF_CONFIG.observedInternalAuth, true);
   assert.equal(WINDSURF_CONFIG.thirdPartyOAuthSupported, false);
-  assert.equal(
-    PROVIDERS.windsurf.buildAuthUrl(
-      WINDSURF_CONFIG,
-      "http://localhost/callback",
-      "state-123",
-      "challenge-456"
-    ),
-    "https://windsurf.com/editor/show-auth-token?workflow="
+  const authUrl = PROVIDERS.windsurf.buildAuthUrl(
+    {
+      ...WINDSURF_CONFIG,
+      clientId: "devin-auth",
+    },
+    "http://localhost/callback",
+    "state-123"
   );
+  assert.ok(authUrl);
+  const parsedAuthUrl = new URL(authUrl);
+  assert.equal(parsedAuthUrl.origin + parsedAuthUrl.pathname, "https://windsurf.com/editor/signin");
+  assert.equal(parsedAuthUrl.searchParams.get("response_type"), "token");
+  assert.equal(parsedAuthUrl.searchParams.get("client_id"), "devin-auth");
+  assert.equal(parsedAuthUrl.searchParams.get("redirect_uri"), "http://localhost/callback");
+  assert.equal(parsedAuthUrl.searchParams.get("state"), "state-123");
+  assert.equal(parsedAuthUrl.searchParams.get("prompt"), "login");
+  assert.equal(parsedAuthUrl.searchParams.get("redirect_parameters_type"), "fragment");
   assert.match(
     WINDSURF_CONFIG.disabledMessage,
     /third-party Windsurf OAuth is unsupported by default/i
@@ -381,7 +393,7 @@ test("Windsurf uses manual auth token fallback when browser OAuth is disabled", 
   assert.equal(mapped.apiKey, "windsurf-api-key");
   assert.equal(mapped.accessToken, "windsurf-api-key");
   assert.equal(mapped.name, "Windsurf User");
-  assert.equal(mapped.providerSpecificData.authFlow, "windsurf-manual-auth-token");
+  assert.equal(mapped.providerSpecificData.authFlow, "windsurf-oauth-pkce");
 });
 
 test("Codex parses id_token metadata and prefers a team workspace when the JWT only marks the personal plan", async () => {
@@ -452,16 +464,16 @@ test("Gemini and Antigravity run mocked browser OAuth exchanges and post-exchang
     jsonResponse({ cloudaicompanionProject: { id: "gemini-project" } }),
     jsonResponse({ access_token: "anti-access", refresh_token: "anti-refresh", expires_in: 7200 }),
     jsonResponse({ email: "anti@example.com" }),
-    (_url, init = {}) => {
-      assert.equal(init.method, "POST");
-      assert.equal(init.headers.Authorization, "Bearer anti-access");
-      assert.equal(init.headers["User-Agent"], "google-api-nodejs-client/9.15.1");
+    (_url, init) => {
+      const requestInit = asRequestInit(init);
+      const headers = requestInit.headers as Record<string, string>;
+
+      assert.equal(requestInit.method, "POST");
+      assert.equal(headers.Authorization, "Bearer anti-access");
+      assert.equal(headers["User-Agent"], "google-api-nodejs-client/9.15.1");
+      assert.equal(headers["X-Goog-Api-Client"], "google-cloud-sdk vscode_cloudshelleditor/0.1");
       assert.equal(
-        init.headers["X-Goog-Api-Client"],
-        "google-cloud-sdk vscode_cloudshelleditor/0.1"
-      );
-      assert.equal(
-        init.headers["Client-Metadata"],
+        headers["Client-Metadata"],
         JSON.stringify({
           ideType: "IDE_UNSPECIFIED",
           platform: "PLATFORM_UNSPECIFIED",
@@ -473,14 +485,14 @@ test("Gemini and Antigravity run mocked browser OAuth exchanges and post-exchang
         allowedTiers: [{ id: "tier-default", isDefault: true }],
       });
     },
-    (_url, init = {}) => {
-      assert.equal(init.method, "POST");
-      assert.equal(init.headers.Authorization, "Bearer anti-access");
-      assert.equal(init.headers["User-Agent"], "google-api-nodejs-client/9.15.1");
-      assert.equal(
-        init.headers["X-Goog-Api-Client"],
-        "google-cloud-sdk vscode_cloudshelleditor/0.1"
-      );
+    (_url, init) => {
+      const requestInit = asRequestInit(init);
+      const headers = requestInit.headers as Record<string, string>;
+
+      assert.equal(requestInit.method, "POST");
+      assert.equal(headers.Authorization, "Bearer anti-access");
+      assert.equal(headers["User-Agent"], "google-api-nodejs-client/9.15.1");
+      assert.equal(headers["X-Goog-Api-Client"], "google-cloud-sdk vscode_cloudshelleditor/0.1");
       return jsonResponse({
         done: true,
         response: { cloudaicompanionProject: { id: "anti-project-final" } },

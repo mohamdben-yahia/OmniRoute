@@ -6,6 +6,7 @@ import {
   isAnthropicCompatibleProvider,
 } from "@/shared/constants/providers";
 import { PROVIDER_MODELS } from "@/shared/constants/models";
+import { getModelsByProviderId } from "@omniroute/open-sse/config/providerModels.ts";
 import { getModelIsHidden, resolveProxyForProvider } from "@/lib/localDb";
 import {
   SAFE_OUTBOUND_FETCH_PRESETS,
@@ -816,6 +817,20 @@ export async function GET(
           id: m.id,
           name: m.name || m.id,
           owned_by: "qwen",
+        })),
+        source: "local_catalog",
+      });
+    }
+
+    if (provider === "windsurf" && connection.authType === "oauth") {
+      const windsurfModels = getModelsByProviderId("windsurf");
+      return buildResponse({
+        provider,
+        connectionId,
+        models: windsurfModels.map((m: any) => ({
+          id: m.id,
+          name: m.name || m.id,
+          owned_by: provider,
         })),
         source: "local_catalog",
       });

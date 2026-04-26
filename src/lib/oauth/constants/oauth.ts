@@ -95,17 +95,23 @@ const QODER_OAUTH_ENABLED =
   !!QODER_OAUTH_CLIENT_ID &&
   !!QODER_OAUTH_CLIENT_SECRET;
 
-const WINDSURF_OAUTH_AUTHORIZE_URL = process.env.WINDSURF_OAUTH_AUTHORIZE_URL || "";
+const WINDSURF_OAUTH_AUTHORIZE_URL =
+  process.env.WINDSURF_OAUTH_AUTHORIZE_URL || "https://windsurf.com/editor/signin";
 const WINDSURF_OAUTH_TOKEN_URL = process.env.WINDSURF_OAUTH_TOKEN_URL || "";
 const WINDSURF_OAUTH_CLIENT_ID = process.env.WINDSURF_OAUTH_CLIENT_ID || "";
 const WINDSURF_OAUTH_CLIENT_SECRET = process.env.WINDSURF_OAUTH_CLIENT_SECRET || "";
 const WINDSURF_OAUTH_REDIRECT_URI = process.env.WINDSURF_OAUTH_REDIRECT_URI || "";
 const WINDSURF_OAUTH_SCOPES = process.env.WINDSURF_OAUTH_SCOPES || "openid profile email";
+const WINDSURF_AUTH_TOKEN_URL =
+  process.env.WINDSURF_AUTH_TOKEN_URL || "https://windsurf.com/editor/show-auth-token?workflow=";
+const WINDSURF_REGISTER_TOKEN_URL =
+  process.env.WINDSURF_REGISTER_TOKEN_URL || "https://api.codeium.com/register_user/";
+const WINDSURF_REGISTER_API_SERVER_URL =
+  process.env.WINDSURF_REGISTER_API_SERVER_URL || "https://register.windsurf.com";
+const WINDSURF_DEFAULT_API_SERVER_URL =
+  process.env.WINDSURF_DEFAULT_API_SERVER_URL || "https://server.codeium.com";
 const WINDSURF_OAUTH_ENABLED =
-  !!WINDSURF_OAUTH_AUTHORIZE_URL &&
-  !!WINDSURF_OAUTH_TOKEN_URL &&
-  !!WINDSURF_OAUTH_CLIENT_ID &&
-  !!WINDSURF_OAUTH_REDIRECT_URI;
+  !!WINDSURF_OAUTH_TOKEN_URL && !!WINDSURF_OAUTH_CLIENT_ID && !!WINDSURF_OAUTH_REDIRECT_URI;
 
 export const QODER_CONFIG = {
   enabled: QODER_OAUTH_ENABLED,
@@ -127,6 +133,10 @@ export const WINDSURF_CONFIG = {
   authorizeUrl: WINDSURF_OAUTH_AUTHORIZE_URL,
   tokenUrl: WINDSURF_OAUTH_TOKEN_URL,
   redirectUri: WINDSURF_OAUTH_REDIRECT_URI,
+  authTokenUrl: WINDSURF_AUTH_TOKEN_URL,
+  registerTokenUrl: WINDSURF_REGISTER_TOKEN_URL,
+  registerApiServerUrl: WINDSURF_REGISTER_API_SERVER_URL,
+  defaultApiServerUrl: WINDSURF_DEFAULT_API_SERVER_URL,
   scopes: WINDSURF_OAUTH_SCOPES.split(/\s+/)
     .map((scope) => scope.trim())
     .filter(Boolean),
@@ -136,6 +146,8 @@ export const WINDSURF_CONFIG = {
   thirdPartyOAuthSupported: false,
   disabledMessage:
     "Windsurf internal auth has been observed in the desktop client, but third-party Windsurf OAuth is unsupported by default. Configure WINDSURF_OAUTH_* only after you have a stable, authorized public OAuth contract.",
+  manualTokenMessage:
+    "Use the Windsurf auth token page, then paste the token into OmniRoute for experimental exchange into a Windsurf API key.",
 };
 
 // Kimi Coding OAuth Configuration (Device Code Flow)

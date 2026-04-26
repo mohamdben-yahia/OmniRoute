@@ -7,6 +7,12 @@ import Modal from "./Modal";
 import Button from "./Button";
 import Input from "./Input";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
+import {
+  buildManualOAuthExchangePayload,
+  extractWindsurfPopupCallbackData,
+  resolveManualOAuthRedirectUri,
+  resolveOAuthExchangeInput,
+} from "@/shared/utils/oauthManualSubmit";
 
 const GOOGLE_OAUTH_PROVIDERS = new Set(["antigravity", "gemini-cli"]);
 const MANUAL_TOKEN_PROVIDERS = new Set(["windsurf"]);
@@ -91,12 +97,15 @@ export default function OAuthModal({
         const res = await fetch(`/api/oauth/${provider}/exchange`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            code,
-            redirectUri: authData.redirectUri,
-            ...(authData.codeVerifier ? { codeVerifier: authData.codeVerifier } : {}),
-            ...(normalizedState ? { state: normalizedState } : {}),
-          }),
+          body: JSON.stringify(
+            buildManualOAuthExchangePayload({
+              provider,
+              input: code,
+              redirectUri: authData.redirectUri,
+              codeVerifier: authData.codeVerifier,
+              state: normalizedState,
+            })
+          ),
         });
 
         const data = await res.json();
@@ -199,9 +208,9 @@ export default function OAuthModal({
       setError(null);
 
       if (isManualTokenProvider) {
-        const redirectUri = window.location.origin;
+        const fallbackRedirectUri = window.location.origin;
         const res = await fetch(
-          `/api/oauth/${provider}/authorize?redirect_uri=${encodeURIComponent(redirectUri)}`
+          `/api/oauth/${provider}/authorize?redirect_uri=${encodeURIComponent(fallbackRedirectUri)}`
         );
         const data = await res.json();
         if (!res.ok) {
@@ -213,10 +222,20 @@ export default function OAuthModal({
           throw new Error(errMsg);
         }
 
+        const redirectUri = resolveManualOAuthRedirectUri({
+          provider,
+          authDataRedirectUri:
+            typeof data.redirectUri === "string" && data.redirectUri.length > 0
+              ? data.redirectUri
+              : undefined,
+          fallbackRedirectUri,
+        });
+
         setAuthData({ ...data, redirectUri });
-        setStep("input");
-        if (data.authUrl) {
-          window.open(data.authUrl, "oauth_auth");
+        setStep("waiting");
+        popupRef.current = window.open(data.authUrl, "oauth_popup", "width=600,height=700");
+        if (!popupRef.current) {
+          throw new Error("Popup blocked. Allow popups for this site and try again.");
         }
         return;
       }
@@ -428,7 +447,7 @@ export default function OAuthModal({
     const handleCallback = async (data) => {
       if (callbackProcessedRef.current) return; // Already processed
 
-      const { code, state, error: callbackError, errorDescription } = data;
+      const { code, state, error: callbackError, errorDescription, fullUrl } = data;
 
       if (callbackError) {
         callbackProcessedRef.current = true;
@@ -437,9 +456,15 @@ export default function OAuthModal({
         return;
       }
 
-      if (code) {
+      const exchangeInput = resolveOAuthExchangeInput({
+        provider,
+        code,
+        fullUrl,
+      });
+
+      if (exchangeInput) {
         callbackProcessedRef.current = true;
-        await exchangeTokens(code, state);
+        await exchangeTokens(exchangeInput, state);
       }
     };
 
@@ -516,6 +541,23 @@ export default function OAuthModal({
         return;
       }
       try {
+        const popupUrl = popupRef.current?.location?.href;
+        if (provider === "windsurf") {
+          const callbackData = extractWindsurfPopupCallbackData({
+            popupUrl,
+            expectedOrigin: window.location.origin,
+          });
+          if (callbackData) {
+            callbackProcessedRef.current = true;
+            clearInterval(popupClosedInterval);
+            void exchangeTokens(callbackData.fullUrl, callbackData.state);
+            try {
+              popupRef.current?.close();
+            } catch {}
+            return;
+          }
+        }
+
         if (popupRef.current?.closed) {
           closed = true;
           clearInterval(popupClosedInterval);
@@ -703,7 +745,9 @@ export default function OAuthModal({
               )}
               <div>
                 <p className="text-sm font-medium mb-2">
-                  {isManualTokenProvider ? "Step 1: Open Windsurf token page" : t("step1OpenUrl")}
+                  {isManualTokenProvider
+                    ? "Step 1: Open the Windsurf sign-in URL"
+                    : t("step1OpenUrl")}
                 </p>
                 <div className="flex gap-2">
                   <Input
@@ -724,12 +768,12 @@ export default function OAuthModal({
               <div>
                 <p className="text-sm font-medium mb-2">
                   {isManualTokenProvider
-                    ? "Step 2: Paste the Windsurf auth token"
+                    ? "Step 2: Paste the final Windsurf redirect URL"
                     : t("step2PasteCallback")}
                 </p>
                 <p className="text-xs text-text-muted mb-2">
                   {isManualTokenProvider
-                    ? "Use the token shown by Windsurf's auth page or backup login flow. OmniRoute will exchange it for a Windsurf API key experimentally."
+                    ? "After Windsurf redirects automatically, copy the final URL from your browser address bar. It must include the fragment with state and access_token. OmniRoute will exchange that value for a Windsurf API key experimentally."
                     : t.rich("step2Hint", {
                         code: (c) => <code className="font-mono">{c}</code>,
                       })}
@@ -739,7 +783,7 @@ export default function OAuthModal({
                   onChange={(e) => setCallbackUrl(e.target.value)}
                   placeholder={
                     isManualTokenProvider
-                      ? "Paste Windsurf auth token"
+                      ? "Paste the full Windsurf callback URL"
                       : provider === "claude" || provider === "cline"
                         ? "code#state or /callback?code=..."
                         : placeholderUrl
@@ -751,7 +795,7 @@ export default function OAuthModal({
 
             <div className="flex gap-2">
               <Button onClick={handleManualSubmit} fullWidth disabled={!callbackUrl || !authData}>
-                {isManualTokenProvider ? "Exchange Token" : t("connect")}
+                {isManualTokenProvider ? "Exchange Windsurf Redirect" : t("connect")}
               </Button>
               <Button onClick={onClose} variant="ghost" fullWidth>
                 {t("cancel")}

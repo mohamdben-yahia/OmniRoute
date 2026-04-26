@@ -366,6 +366,24 @@ test("provider models route returns the local catalog for OAuth-backed Qwen conn
   assert.ok(Array.isArray(body.models));
 });
 
+test("provider models route returns the local catalog for Windsurf OAuth connections", async () => {
+  const connection = await seedConnection("windsurf", {
+    authType: "oauth",
+    accessToken: "windsurf-access",
+    apiKey: null,
+  });
+
+  const response = await callRoute(connection.id);
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(body.provider, "windsurf");
+  assert.equal(body.source, "local_catalog");
+  assert.ok(Array.isArray(body.models));
+  assert.ok(body.models.length > 0);
+  assert.ok(body.models.some((model) => model.id === "gpt4o"));
+});
+
 test("provider models route filters hidden models from the static Claude catalog when requested", async () => {
   const connection = await seedConnection("claude", {
     authType: "oauth",

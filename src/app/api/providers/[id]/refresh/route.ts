@@ -44,6 +44,13 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     }
 
     const provider = connection.provider;
+    if (provider === "windsurf") {
+      return NextResponse.json(
+        { error: `Provider ${provider} does not support manual token refresh` },
+        { status: 400 }
+      );
+    }
+
     const credentials = {
       connectionId: id,
       accessToken: connection.accessToken,

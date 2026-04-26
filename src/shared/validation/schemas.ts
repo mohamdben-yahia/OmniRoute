@@ -1161,12 +1161,23 @@ export const translatorTranslateSchema = z
     }
   });
 
-export const oauthExchangeSchema = z.object({
-  code: z.string().trim().min(1),
-  redirectUri: z.string().trim().min(1),
-  codeVerifier: z.string().trim().min(1).optional(),
-  state: z.string().nullable().optional(),
-});
+export const oauthExchangeSchema = z
+  .object({
+    code: z.string().trim().min(1).optional(),
+    callbackUrl: z.string().trim().min(1).optional(),
+    redirectUri: z.string().trim().min(1),
+    codeVerifier: z.string().trim().min(1).optional(),
+    state: z.string().nullable().optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.code === undefined && value.callbackUrl === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["code"],
+        message: "Either code or callbackUrl is required",
+      });
+    }
+  });
 
 export const oauthPollSchema = z.object({
   deviceCode: z.string().trim().min(1),
