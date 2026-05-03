@@ -7,6 +7,7 @@ import {
 } from "@/shared/constants/providers";
 import { PROVIDER_MODELS } from "@/shared/constants/models";
 import { getModelsByProviderId } from "@omniroute/open-sse/config/providerModels.ts";
+import { WINDSURF_DISPLAY_CATALOG } from "@omniroute/open-sse/config/windsurfModels.ts";
 import { getModelIsHidden, resolveProxyForProvider } from "@/lib/localDb";
 import {
   SAFE_OUTBOUND_FETCH_PRESETS,
@@ -25,6 +26,7 @@ import {
   getClientVisibleAntigravityModelName,
   toClientAntigravityModelId,
 } from "@omniroute/open-sse/config/antigravityModelAliases.ts";
+import { windsurfLocalAdapter } from "@/lib/acp/windsurfLocal";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -93,6 +95,117 @@ function mapAntigravityModelForClient(model: { id: string; name: string }): {
   return {
     id: clientId,
     name: getClientVisibleAntigravityModelName(clientId, model.name),
+  };
+}
+
+function mapWindsurfCatalogModels() {
+  return WINDSURF_DISPLAY_CATALOG.map((m) => ({
+    id: m.id,
+    name: m.name || m.id,
+    owned_by: "windsurf" as const,
+  }));
+}
+
+type WindsurfSemanticModel = {
+  id: string;
+  name: string;
+  owned_by: "windsurf";
+  displayable: boolean;
+  authorized: boolean;
+  executable: boolean;
+  reason: string;
+};
+
+function mapWindsurfSemanticModels(
+  models: Array<{ id: string; name: string; owned_by: "windsurf" }>,
+  source: "local_catalog" | "acp_runtime" | "session_runtime"
+): WindsurfSemanticModel[] {
+  if (source === "local_catalog") {
+    return models.map((model) => ({
+      ...model,
+      displayable: true,
+      authorized: false,
+      executable: false,
+      reason: "catalog fallback because runtime model authorization is unavailable",
+    }));
+  }
+
+  return models.map((model) => ({
+    ...model,
+    displayable: true,
+    authorized: true,
+    executable: true,
+    reason: "runtime model discovered from Windsurf session",
+  }));
+}
+
+export async function resolveWindsurfModelsSource(
+  connection: {
+    provider: string;
+    authType: string;
+    accessToken?: string | null;
+    apiKey?: string | null;
+    providerSpecificData?: unknown;
+  },
+  adapter: Pick<typeof windsurfLocalAdapter, "bootstrapWindsurfSession"> = windsurfLocalAdapter
+) {
+  const runtimeToken =
+    typeof connection.accessToken === "string" && connection.accessToken.trim().length > 0
+      ? connection.accessToken
+      : typeof connection.apiKey === "string" && connection.apiKey.trim().length > 0
+        ? connection.apiKey
+        : null;
+
+  const localCatalog = mapWindsurfCatalogModels();
+  if (!runtimeToken) {
+    return {
+      models: mapWindsurfSemanticModels(localCatalog, "local_catalog"),
+      source: "local_catalog",
+      warning: "Windsurf runtime models unavailable — showing cached display catalog",
+      discovery: {
+        status: "missing",
+        source: "none",
+        transport: "local_catalog",
+      },
+    };
+  }
+
+  try {
+    const providerSpecificData = asRecord(connection.providerSpecificData);
+    const bootstrap = await adapter.bootstrapWindsurfSession({
+      apiKey: runtimeToken,
+      apiServerUrl: toNonEmptyString(providerSpecificData.apiServerUrl) || "https://server.codeium.com",
+      cwd: process.cwd(),
+    });
+
+    const runtimeModels = bootstrap.models?.availableModels;
+    if (Array.isArray(runtimeModels) && runtimeModels.length > 0) {
+      const transport =
+        bootstrap.modelDiscovery?.source === "session/new" ? "acp_runtime" : "session_runtime";
+      return {
+        models: mapWindsurfSemanticModels(runtimeModels, transport),
+        source: transport,
+        discovery: {
+          status: bootstrap.modelDiscovery?.status || "present",
+          source: bootstrap.modelDiscovery?.source || "session/new",
+          transport,
+        },
+      };
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`[models] Windsurf ACP discovery failed: ${message}`);
+  }
+
+  return {
+    models: mapWindsurfSemanticModels(localCatalog, "local_catalog"),
+    source: "local_catalog",
+    warning: "Windsurf runtime models unavailable — showing cached display catalog",
+    discovery: {
+      status: "failed",
+      source: "none",
+      transport: "local_catalog",
+    },
   };
 }
 
@@ -823,16 +936,21 @@ export async function GET(
     }
 
     if (provider === "windsurf" && connection.authType === "oauth") {
-      const windsurfModels = getModelsByProviderId("windsurf");
+      const resolved = await resolveWindsurfModelsSource({
+        provider,
+        authType: connection.authType,
+        accessToken,
+        apiKey,
+        providerSpecificData: connection.providerSpecificData,
+      });
+
       return buildResponse({
         provider,
         connectionId,
-        models: windsurfModels.map((m: any) => ({
-          id: m.id,
-          name: m.name || m.id,
-          owned_by: provider,
-        })),
-        source: "local_catalog",
+        models: resolved.models,
+        source: resolved.source,
+        discovery: resolved.discovery,
+        ...(resolved.warning ? { warning: resolved.warning } : {}),
       });
     }
 

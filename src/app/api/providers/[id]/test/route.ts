@@ -81,6 +81,9 @@ const OAUTH_TEST_CONFIG = {
     checkExpiry: true,
     refreshable: true,
   },
+  windsurf: {
+    checkExpiry: true,
+  },
 };
 
 const CLI_RUNTIME_PROVIDER_MAP = {
@@ -360,18 +363,8 @@ async function testOAuthConnection(connection: any) {
 
   // For providers that only check expiry (no test endpoint available)
   if (config.checkExpiry) {
-    // If we already refreshed successfully, token is valid
-    if (refreshed) {
-      return {
-        valid: true,
-        error: null,
-        refreshed,
-        newTokens,
-        diagnosis: makeDiagnosis("ok", "oauth", null, null),
-      };
-    }
     // Check if token is expired (no refresh available)
-    if (tokenExpired) {
+    if (tokenExpired && !refreshed) {
       const error = "Token expired";
       return {
         valid: false,
@@ -380,12 +373,45 @@ async function testOAuthConnection(connection: any) {
         diagnosis: classifyFailure({ error }),
       };
     }
+
+    if (connection.provider === "windsurf") {
+      const validation = await validateProviderApiKey({
+        provider: connection.provider,
+        apiKey: accessToken,
+        providerSpecificData: connection.providerSpecificData,
+      });
+
+      if (!validation.valid) {
+        const error = validation.error || "Invalid API key";
+        return {
+          valid: false,
+          error,
+          refreshed,
+          newTokens,
+          warning: validation.warning || null,
+          statusCode: validation.statusCode || null,
+          diagnosis: classifyFailure({ error, statusCode: validation.statusCode || 401 }),
+        };
+      }
+
+      return {
+        valid: true,
+        error: null,
+        refreshed,
+        newTokens,
+        warning:
+          validation.warning ||
+          "Manual token refresh is not supported for Windsurf; re-authenticate when the session expires.",
+        diagnosis: makeDiagnosis("ok", "upstream", null, null),
+      };
+    }
+
     return {
       valid: true,
       error: null,
-      refreshed: false,
-      newTokens: null,
-      diagnosis: makeDiagnosis("ok", "local", null, null),
+      refreshed,
+      newTokens,
+      diagnosis: makeDiagnosis(refreshed ? "ok" : "ok", refreshed ? "oauth" : "local", null, null),
     };
   }
 

@@ -53,7 +53,18 @@ import {
   getModelUpstreamExtraHeaders,
   getUpstreamProxyConfig,
 } from "@/lib/localDb";
-import { getExecutor } from "../executors/index.ts";
+import { RoutingKernel } from "@/lib/routing/kernel";
+import { ExecutionAdapter } from "@/lib/routing/executionAdapter";
+import { executorFactory } from "@/lib/routing/executorFactory";
+import { buildRoutingContext } from "@/lib/routing/context";
+import { resolveWindsurfBackend } from "@/lib/routing/windsurfBackendResolver";
+import { createWindsurfRuntimeInspector } from "@/lib/routing/windsurfRuntimeInspector";
+import type {
+  ExecutionPlan,
+  PlannedExecutionAttempt,
+  ResolveExecutionPlanInput,
+  RoutingResolution,
+} from "@/lib/routing/types";
 import { getCacheControlSettings } from "@/lib/cacheControlSettings";
 import { guardrailRegistry, resolveDisabledGuardrails } from "@/lib/guardrails";
 import {
@@ -634,6 +645,186 @@ function buildExecutorClientHeaders(
   return Object.keys(normalized).length > 0 ? normalized : null;
 }
 
+const defaultRoutingKernel = new RoutingKernel();
+const defaultExecutionAdapter = new ExecutionAdapter(executorFactory);
+const defaultWindsurfRuntimeInspector = createWindsurfRuntimeInspector();
+
+async function resolveExecutionPlan({
+  routeContext,
+}: ResolveExecutionPlanInput): Promise<RoutingResolution> {
+  const decision = defaultRoutingKernel.route(routeContext);
+  return {
+    decision,
+    executor: defaultExecutionAdapter.resolve(decision),
+  };
+}
+
+function freezeRoutingResolution(resolution: RoutingResolution): RoutingResolution {
+  const trace = Object.isFrozen(resolution.decision.trace)
+    ? resolution.decision.trace
+    : Object.freeze({ ...resolution.decision.trace });
+  const decision = Object.isFrozen(resolution.decision)
+    ? resolution.decision
+    : Object.freeze({ ...resolution.decision, trace });
+
+  return {
+    decision,
+    executor: resolution.executor,
+  };
+}
+
+function toUpstreamModelId(modelId: string, provider: string, providerAlias: string) {
+  if (modelId.startsWith(`${provider}/`)) {
+    return modelId.slice(provider.length + 1);
+  }
+  if (providerAlias && modelId.startsWith(`${providerAlias}/`)) {
+    return modelId.slice(providerAlias.length + 1);
+  }
+  return modelId;
+}
+
+function buildPlannedFallbackChain(primaryModel: string) {
+  const triedModels = new Set<string>([primaryModel]);
+  const fallbackChain: string[] = [];
+  let currentModel = primaryModel;
+
+  while (true) {
+    const nextModel = getNextFamilyFallback(currentModel, triedModels);
+    if (!nextModel) break;
+    fallbackChain.push(nextModel);
+    triedModels.add(nextModel);
+    currentModel = nextModel;
+  }
+
+  return fallbackChain;
+}
+
+async function buildExecutionPlan({
+  provider,
+  model,
+  body,
+  providerAlias,
+  planResolver,
+  inspectWindsurfRuntime,
+  executionCredentials,
+  cwd,
+}: {
+  provider: string;
+  model: string;
+  body: Record<string, unknown> | null | undefined;
+  providerAlias: string;
+  planResolver: (input: ResolveExecutionPlanInput) => Promise<RoutingResolution>;
+  inspectWindsurfRuntime: (input: {
+    requestedModel: string;
+    credentials: { apiKey?: string };
+    cwd: string;
+  }) => Promise<{
+    lsOk: boolean;
+    localModelAvailable: boolean;
+    availableModels: string[];
+    source: "capability_defaults" | "observed_health";
+    modelDiscovery: {
+      status: "present" | "enriched" | "missing" | "failed" | "pending";
+      source: "session/new" | "session/load" | "session/resume" | "none";
+      reason?: "auth_failure" | "registry_failure" | "not_provided" | "unknown";
+    };
+    reason: string;
+  }>;
+  executionCredentials: { apiKey?: string };
+  cwd: string;
+}): Promise<ExecutionPlan> {
+  const fallbackChain = buildPlannedFallbackChain(model);
+  const attempts: PlannedExecutionAttempt[] = [];
+
+  for (const attemptModel of [model, ...fallbackChain]) {
+    const runtime =
+      provider === "windsurf"
+        ? await inspectWindsurfRuntime({
+            requestedModel: attemptModel,
+            credentials: executionCredentials,
+            cwd,
+          })
+        : {
+            lsOk: false,
+            localModelAvailable: false,
+            availableModels: [],
+            source: "capability_defaults" as const,
+            modelDiscovery: {
+              status: "missing" as const,
+              source: "none" as const,
+              reason: "not_provided" as const,
+            },
+            reason: "non-windsurf providers do not use the Windsurf runtime inspector",
+          };
+
+    const backend = resolveWindsurfBackend({
+      requestedProvider: provider,
+      requestedModel: attemptModel,
+      body,
+      runtime,
+    });
+
+    const routeContext = buildRoutingContext({
+      provider: backend.effectiveProvider,
+      model: backend.effectiveModel,
+      body,
+    });
+    const resolution = freezeRoutingResolution(
+      await planResolver({
+        routeContext,
+        request: {
+          provider: backend.effectiveProvider,
+          model: backend.effectiveModel,
+          requestedProvider: provider,
+          requestedModel: attemptModel,
+          body,
+        },
+      })
+    );
+    attempts.push({
+      model: attemptModel,
+      upstreamModel: toUpstreamModelId(attemptModel, provider, providerAlias),
+      decision: resolution.decision,
+      executor: resolution.executor,
+    });
+  }
+
+  return {
+    primaryModel: model,
+    fallbackChain,
+    attempts,
+  };
+}
+
+function selectNextPlannedAttempt({
+  attempts,
+  currentAttempt,
+  statusCode,
+  message,
+}: {
+  attempts: PlannedExecutionAttempt[];
+  currentAttempt: PlannedExecutionAttempt;
+  statusCode: number;
+  message: string;
+}) {
+  const currentIndex = attempts.findIndex((attempt) => attempt.model === currentAttempt.model);
+  if (currentIndex < 0) return null;
+
+  const remainingAttempts = attempts.slice(currentIndex + 1);
+  if (remainingAttempts.length === 0) return null;
+
+  if (isContextOverflowError(statusCode, message)) {
+    const nextModel =
+      findLargerContextModel(
+        currentAttempt.model,
+        remainingAttempts.map((attempt) => attempt.model)
+      ) ?? remainingAttempts[0].model;
+    return remainingAttempts.find((attempt) => attempt.model === nextModel) ?? remainingAttempts[0];
+  }
+
+  return remainingAttempts[0];
+}
+
 export async function handleChatCore({
   body,
   modelInfo,
@@ -652,6 +843,7 @@ export async function handleChatCore({
   comboStepId = null,
   comboExecutionKey = null,
   disableEmergencyFallback = false,
+  routingDeps,
 }) {
   let { provider, model, extendedContext } = modelInfo;
   const requestedModel =
@@ -1592,13 +1784,30 @@ export async function handleChatCore({
 
   // Update model in body — use resolved alias so the provider gets the correct model ID (#472)
   // Strip provider/alias prefix if it exactly matches the routing prefix so upstream receives the raw model name (#1261)
-  let finalModelToUpstream = effectiveModel;
-  if (finalModelToUpstream.startsWith(`${provider}/`)) {
-    finalModelToUpstream = finalModelToUpstream.slice(provider.length + 1);
-  } else if (alias && finalModelToUpstream.startsWith(`${alias}/`)) {
-    finalModelToUpstream = finalModelToUpstream.slice(alias.length + 1);
-  }
-  translatedBody.model = finalModelToUpstream;
+  const planResolver = routingDeps?.resolveExecutionPlan || resolveExecutionPlan;
+  const inspectWindsurfRuntime = routingDeps?.inspectWindsurfRuntime || defaultWindsurfRuntimeInspector.inspect;
+  const routedModel = typeof effectiveModel === "string" ? effectiveModel : model;
+  const executionPlan = await buildExecutionPlan({
+    provider,
+    model: routedModel,
+    body: body as Record<string, unknown> | null | undefined,
+    providerAlias: alias,
+    planResolver,
+    inspectWindsurfRuntime,
+    executionCredentials: {
+      apiKey:
+        typeof credentials?.apiKey === "string"
+          ? credentials.apiKey
+          : typeof credentials?.accessToken === "string"
+            ? credentials.accessToken
+            : undefined,
+    },
+    cwd: process.cwd(),
+  });
+  let currentAttempt = executionPlan.attempts[0];
+  let decision = currentAttempt.decision;
+  let executor = currentAttempt.executor;
+  translatedBody.model = currentAttempt.upstreamModel;
 
   // Strip unsupported parameters for reasoning models (o1, o3, etc.)
   const unsupported = getUnsupportedParams(provider, model);
@@ -1631,70 +1840,10 @@ export async function handleChatCore({
     }
   }
 
-  // Resolve executor with optional upstream proxy (CLIProxyAPI) routing.
-  // mode="native" (default): returns the native executor unchanged.
-  // mode="cliproxyapi": returns the CLIProxyAPI executor instead.
-  // mode="fallback": returns a wrapper that tries native first, falls back to CLIProxyAPI on 5xx/network errors.
-
-  const resolveExecutorWithProxy = async (prov: string) => {
-    const cfg = await getUpstreamProxyConfigCached(prov);
-    if (!cfg.enabled || cfg.mode === "native") return getExecutor(prov);
-
-    if (cfg.mode === "cliproxyapi") {
-      log?.info?.("UPSTREAM_PROXY", `${prov} routed through CLIProxyAPI (passthrough)`);
-      return getExecutor("cliproxyapi");
-    }
-
-    // mode === "fallback": try native first, retry via CLIProxyAPI on specific failures
-    const nativeExec = getExecutor(prov);
-    const proxyExec = getExecutor("cliproxyapi");
-    const isRetryableStatus = (s: number) => s >= 500 || s === 429 || s === 0;
-
-    const wrapper = Object.create(nativeExec);
-    wrapper.execute = async (input: {
-      model: string;
-      body: unknown;
-      stream: boolean;
-      credentials: unknown;
-      signal?: AbortSignal | null;
-      log?: unknown;
-      upstreamExtraHeaders?: Record<string, string> | null;
-    }) => {
-      let result;
-      try {
-        result = await nativeExec.execute(input);
-      } catch (err) {
-        const errMsg = err instanceof Error ? err.message : String(err);
-        log?.info?.("UPSTREAM_PROXY", `${prov} native error (${errMsg}), retrying via CLIProxyAPI`);
-        try {
-          return await proxyExec.execute(input);
-        } catch (proxyErr) {
-          const proxyMsg = proxyErr instanceof Error ? proxyErr.message : String(proxyErr);
-          log?.error?.("UPSTREAM_PROXY", `${prov} CLIProxyAPI fallback also failed: ${proxyMsg}`);
-          throw proxyErr;
-        }
-      }
-
-      if (!isRetryableStatus(result.response.status)) {
-        return result;
-      }
-      log?.info?.(
-        "UPSTREAM_PROXY",
-        `${prov} native failed (${result.response.status}), retrying via CLIProxyAPI`
-      );
-      try {
-        return await proxyExec.execute(input);
-      } catch (proxyErr) {
-        const proxyMsg = proxyErr instanceof Error ? proxyErr.message : String(proxyErr);
-        log?.error?.("UPSTREAM_PROXY", `${prov} CLIProxyAPI fallback also failed: ${proxyMsg}`);
-        throw proxyErr;
-      }
-    };
-    return wrapper;
-  };
-
-  // Get executor for this provider (with optional upstream proxy routing)
-  const executor = await resolveExecutorWithProxy(provider);
+  log?.info?.(
+    "ROUTING",
+    `${decision.trace.modelId} -> ${decision.trace.primaryBackend}${decision.trace.fallbackBackend ? ` (fallback ${decision.trace.fallbackBackend})` : ""}: ${decision.trace.reason}`
+  );
   const getExecutionCredentials = () => {
     const nextCredentials = nativeCodexPassthrough
       ? { ...credentials, requestEndpointPath: endpointPath }
@@ -1714,16 +1863,22 @@ export async function handleChatCore({
   // Create stream controller for disconnect detection
   const streamController = createStreamController({ onDisconnect, log, provider, model });
 
-  const dedupRequestBody = { ...translatedBody, model: `${provider}/${model}`, stream };
+  const dedupRequestBody = { ...translatedBody, model: `${provider}/${routedModel}`, stream };
   const dedupEnabled = shouldDeduplicate(dedupRequestBody);
   const dedupHash = dedupEnabled ? computeRequestHash(dedupRequestBody) : null;
 
-  const executeProviderRequest = async (modelToCall = effectiveModel, allowDedup = false) => {
+  const executeProviderRequest = async (
+    attempt: PlannedExecutionAttempt = currentAttempt,
+    allowDedup = false
+  ) => {
+    const modelToCall = attempt.model;
+    const upstreamModelToCall = attempt.upstreamModel;
+    const activeExecutor = attempt.executor;
     const execute = async () => {
       let bodyToSend =
-        translatedBody.model === modelToCall
+        translatedBody.model === upstreamModelToCall
           ? translatedBody
-          : { ...translatedBody, model: modelToCall };
+          : { ...translatedBody, model: upstreamModelToCall };
       const payloadRuleModel =
         typeof bodyToSend.model === "string" && bodyToSend.model.length > 0
           ? bodyToSend.model
@@ -1792,7 +1947,7 @@ export async function handleChatCore({
         const maxAttempts = provider === "qwen" ? 3 : 1;
 
         while (attempts < maxAttempts) {
-          const res = await executor.execute({
+          const res = await activeExecutor.execute({
             model: modelToCall,
             body: bodyToSend,
             stream: upstreamStream,
@@ -1857,10 +2012,6 @@ export async function handleChatCore({
   // Track pending request
   trackPendingRequest(model, provider, connectionId, true);
 
-  // T5: track which models we've tried for intra-family fallback
-  const triedModels = new Set<string>([effectiveModel]);
-  let currentModel = effectiveModel;
-
   // Log start
   appendRequestLog({ model, provider, connectionId, status: "PENDING" }).catch(() => {});
 
@@ -1879,7 +2030,7 @@ export async function handleChatCore({
   let claudePromptCacheLogMeta = null;
 
   try {
-    const result = await executeProviderRequest(effectiveModel, true);
+    const result = await executeProviderRequest(currentAttempt, true);
 
     providerResponse = result.response;
     providerUrl = result.url;
@@ -1971,7 +2122,7 @@ export async function handleChatCore({
     !streamOptionsOnlyFailed // Keep constraint if stream options failed originally
   ) {
     const newCredentials = (await refreshWithRetry(
-      () => executor.refreshCredentials(credentials, log),
+      () => currentAttempt.executor.refreshCredentials(credentials, log),
       3,
       log,
       provider // Explicitly pass the provider to avoid universally tripping the "unknown" circuit breaker
@@ -1991,13 +2142,13 @@ export async function handleChatCore({
         await onCredentialsRefreshed(newCredentials);
       }
 
-      // Retry with new credentials — model + extra headers follow translatedBody.model so they
-      // stay aligned if this block ever runs after a path that mutates body.model (e.g. fallback).
       try {
-        const retryModelId = String(translatedBody.model || effectiveModel);
-        const retryResult = await executor.execute({
+        const retryModelId = currentAttempt.model;
+        const retryUpstreamModelId = currentAttempt.upstreamModel;
+        const retryBody = { ...translatedBody, model: retryUpstreamModelId };
+        const retryResult = await currentAttempt.executor.execute({
           model: retryModelId,
-          body: translatedBody,
+          body: retryBody,
           stream: upstreamStream,
           credentials: getExecutionCredentials(),
           signal: streamController.signal,
@@ -2207,27 +2358,31 @@ export async function handleChatCore({
     // from the same family. This keeps the request alive on the same account
     // instead of failing the entire combo.
     if (isModelUnavailableError(statusCode, message)) {
-      const nextModel = getNextFamilyFallback(currentModel, triedModels);
-      if (nextModel) {
-        triedModels.add(nextModel);
-        currentModel = nextModel;
-        translatedBody.model = nextModel;
-        log?.info?.("MODEL_FALLBACK", `${model} unavailable (${statusCode}) → trying ${nextModel}`);
-        // Re-execute with the fallback model
+      const nextAttempt = selectNextPlannedAttempt({
+        attempts: executionPlan.attempts,
+        currentAttempt,
+        statusCode,
+        message,
+      });
+      if (nextAttempt) {
+        currentAttempt = nextAttempt;
+        decision = currentAttempt.decision;
+        executor = currentAttempt.executor;
+        translatedBody.model = currentAttempt.upstreamModel;
+        log?.info?.(
+          "MODEL_FALLBACK",
+          `${model} unavailable (${statusCode}) → trying ${currentAttempt.model}`
+        );
         try {
-          const fallbackResult = await executeProviderRequest(nextModel, false);
+          const fallbackResult = await executeProviderRequest(currentAttempt, false);
           if (fallbackResult.response.ok) {
             providerResponse = fallbackResult.response;
             providerUrl = fallbackResult.url;
             providerHeaders = fallbackResult.headers;
             finalBody = fallbackResult.transformedBody;
             reqLogger.logTargetRequest(providerUrl, providerHeaders, finalBody);
-            // Continue processing with the fallback response — skip error return
-            log?.info?.("MODEL_FALLBACK", `Serving ${nextModel} as fallback for ${model}`);
-            // Jump to streaming/non-streaming handling below
-            // We fall through by NOT returning here
+            log?.info?.("MODEL_FALLBACK", `Serving ${currentAttempt.model} as fallback for ${model}`);
           } else {
-            // Fallback also failed — return original error
             persistAttemptLogs({
               status: statusCode,
               error: errMsg,
@@ -2264,19 +2419,23 @@ export async function handleChatCore({
         return createErrorResult(statusCode, errMsg, retryAfterMs);
       }
     } else if (isContextOverflowError(statusCode, message)) {
-      const familyCandidates = getModelFamily(currentModel).filter(
-        (m) => m !== currentModel && !triedModels.has(m)
-      );
-      const nextModel =
-        findLargerContextModel(currentModel, familyCandidates) ??
-        getNextFamilyFallback(currentModel, triedModels);
-      if (nextModel) {
-        triedModels.add(nextModel);
-        currentModel = nextModel;
-        translatedBody.model = nextModel;
-        log?.info?.("CONTEXT_OVERFLOW_FALLBACK", `${model} context overflow → trying ${nextModel}`);
+      const nextAttempt = selectNextPlannedAttempt({
+        attempts: executionPlan.attempts,
+        currentAttempt,
+        statusCode,
+        message,
+      });
+      if (nextAttempt) {
+        currentAttempt = nextAttempt;
+        decision = currentAttempt.decision;
+        executor = currentAttempt.executor;
+        translatedBody.model = currentAttempt.upstreamModel;
+        log?.info?.(
+          "CONTEXT_OVERFLOW_FALLBACK",
+          `${model} context overflow → trying ${currentAttempt.model}`
+        );
         try {
-          const fallbackResult = await executeProviderRequest(nextModel, false);
+          const fallbackResult = await executeProviderRequest(currentAttempt, false);
           if (fallbackResult.response.ok) {
             providerResponse = fallbackResult.response;
             providerUrl = fallbackResult.url;
@@ -2285,7 +2444,7 @@ export async function handleChatCore({
             reqLogger.logTargetRequest(providerUrl, providerHeaders, finalBody);
             log?.info?.(
               "CONTEXT_OVERFLOW_FALLBACK",
-              `Serving ${nextModel} as fallback for ${model}`
+              `Serving ${currentAttempt.model} as fallback for ${model}`
             );
           } else {
             persistAttemptLogs({
@@ -2336,7 +2495,6 @@ export async function handleChatCore({
 
       const requestHasTools =
         Array.isArray(translatedBody.tools) && translatedBody.tools.length > 0;
-      let emergencyFallbackServed = false;
 
       if (!disableEmergencyFallback && !stream) {
         const fbDecision = shouldUseFallback(
@@ -2346,66 +2504,14 @@ export async function handleChatCore({
           EMERGENCY_FALLBACK_CONFIG
         );
         if (isFallbackDecision(fbDecision)) {
-          log?.info?.("EMERGENCY_FALLBACK", fbDecision.reason);
-          try {
-            const originalProvider = provider;
-            const fbExecutor = getExecutor(fbDecision.provider);
-            const fbResult = await fbExecutor.execute({
-              model: fbDecision.model,
-              body: {
-                ...translatedBody,
-                model: fbDecision.model,
-                max_tokens: Math.min(
-                  typeof translatedBody.max_tokens === "number"
-                    ? translatedBody.max_tokens
-                    : fbDecision.maxOutputTokens,
-                  fbDecision.maxOutputTokens
-                ),
-                max_completion_tokens: Math.min(
-                  typeof translatedBody.max_completion_tokens === "number"
-                    ? translatedBody.max_completion_tokens
-                    : typeof translatedBody.max_tokens === "number"
-                      ? translatedBody.max_tokens
-                      : fbDecision.maxOutputTokens,
-                  fbDecision.maxOutputTokens
-                ),
-              },
-              stream: false,
-              credentials: credentials,
-              signal: streamController.signal,
-              log,
-              extendedContext,
-            });
-            if (fbResult.response.ok) {
-              provider = fbDecision.provider;
-              model = fbDecision.model;
-              translatedBody.model = fbDecision.model;
-              providerResponse = fbResult.response;
-              providerUrl = fbResult.url;
-              providerHeaders = fbResult.headers;
-              finalBody = fbResult.transformedBody;
-              reqLogger.logTargetRequest(providerUrl, providerHeaders, finalBody);
-              log?.info?.(
-                "EMERGENCY_FALLBACK",
-                `Serving ${fbDecision.provider}/${fbDecision.model} as budget fallback for ${originalProvider}/${requestedModel}`
-              );
-              emergencyFallbackServed = true;
-            } else {
-              log?.warn?.(
-                "EMERGENCY_FALLBACK",
-                `Emergency fallback also failed (${fbResult.response.status})`
-              );
-            }
-          } catch (fbErr) {
-            const errMessage = fbErr instanceof Error ? fbErr.message : String(fbErr);
-            log?.warn?.("EMERGENCY_FALLBACK", `Emergency fallback error: ${errMessage}`);
-          }
+          log?.info?.(
+            "EMERGENCY_FALLBACK",
+            `${fbDecision.reason}; suppressed because routing authority is centralized`
+          );
         }
       }
 
-      if (!emergencyFallbackServed) {
-        return createErrorResult(statusCode, errMsg, retryAfterMs);
-      }
+      return createErrorResult(statusCode, errMsg, retryAfterMs);
     }
     // ── End T5 ───────────────────────────────────────────────────────────────
   }
@@ -2499,17 +2605,23 @@ export async function handleChatCore({
       persistFailureUsage(HTTP_STATUS.BAD_GATEWAY, "empty_content");
 
       // Trigger non-recursive fallback for empty content
-      const nextModel = getNextFamilyFallback(currentModel, triedModels);
-      if (nextModel) {
-        triedModels.add(nextModel);
-        currentModel = nextModel;
-        translatedBody.model = nextModel;
+      const nextAttempt = selectNextPlannedAttempt({
+        attempts: executionPlan.attempts,
+        currentAttempt,
+        statusCode: HTTP_STATUS.BAD_GATEWAY,
+        message: emptyContentMessage,
+      });
+      if (nextAttempt) {
+        currentAttempt = nextAttempt;
+        decision = currentAttempt.decision;
+        executor = currentAttempt.executor;
+        translatedBody.model = currentAttempt.upstreamModel;
         log?.info?.(
           "EMPTY_CONTENT_FALLBACK",
-          `${model} returned empty content → trying ${nextModel}`
+          `${model} returned empty content → trying ${currentAttempt.model}`
         );
         try {
-          const fallbackResult = await executeProviderRequest(nextModel, false);
+          const fallbackResult = await executeProviderRequest(currentAttempt, false);
           if (fallbackResult.response.ok) {
             const fallbackRaw = await fallbackResult.response.text();
             try {
@@ -2520,9 +2632,8 @@ export async function handleChatCore({
               reqLogger.logTargetRequest(providerUrl, providerHeaders, finalBody);
               log?.info?.(
                 "EMPTY_CONTENT_FALLBACK",
-                `Serving ${nextModel} as fallback for ${model}`
+                `Serving ${currentAttempt.model} as fallback for ${model}`
               );
-              // Fall through — continue processing with the new responseBody
             } catch {
               return createErrorResult(HTTP_STATUS.BAD_GATEWAY, emptyContentMessage);
             }
@@ -2801,6 +2912,8 @@ export async function handleChatCore({
           "Content-Type": "application/json",
           "Access-Control-Allow-Origin": getCorsOrigin(),
           [OMNIROUTE_RESPONSE_HEADERS.cache]: "MISS",
+          "X-OmniRoute-Routing-Backend": decision.trace.primaryBackend,
+          "X-OmniRoute-Routing-Reason": decision.trace.reason,
           ...buildOmniRouteResponseMetaHeaders({
             provider,
             model,
@@ -2827,6 +2940,8 @@ export async function handleChatCore({
     Connection: "keep-alive",
     "Access-Control-Allow-Origin": getCorsOrigin(),
     [OMNIROUTE_RESPONSE_HEADERS.cache]: "MISS",
+    "X-OmniRoute-Routing-Backend": decision.trace.primaryBackend,
+    "X-OmniRoute-Routing-Reason": decision.trace.reason,
     ...buildOmniRouteResponseMetaHeaders({
       provider,
       model,

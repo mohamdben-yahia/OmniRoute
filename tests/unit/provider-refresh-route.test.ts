@@ -65,6 +65,7 @@ test("provider refresh route rejects Windsurf manual-token connections without r
 
   assert.equal(response.status, 400);
   assert.deepEqual(await response.json(), {
-    error: "Provider windsurf does not support manual token refresh",
+    error: "Windsurf requires re-authentication",
+    requiresReauth: true,
   });
 });

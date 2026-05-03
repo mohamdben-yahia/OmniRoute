@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 // ─── Import the executor and its dependencies ──────────────────────────────
 
 const { PerplexityWebExecutor } = await import("../../open-sse/executors/perplexity-web.ts");
-const { getExecutor, hasSpecializedExecutor } = await import("../../open-sse/executors/index.ts");
+const { getCloudExecutor, hasSpecializedExecutor } = await import("../../open-sse/executors/index.ts");
 
 // ─── Helper: Build a mock SSE stream from Perplexity events ─────────────────
 
@@ -54,13 +54,13 @@ function mockFetchError(error) {
 test("PerplexityWebExecutor is registered in executor index", () => {
   assert.ok(hasSpecializedExecutor("perplexity-web"));
   assert.ok(hasSpecializedExecutor("pplx-web"));
-  const executor = getExecutor("perplexity-web");
+  const executor = getCloudExecutor("perplexity-web");
   assert.ok(executor instanceof PerplexityWebExecutor);
 });
 
 test("PerplexityWebExecutor alias resolves to same type", () => {
-  const a = getExecutor("perplexity-web");
-  const b = getExecutor("pplx-web");
+  const a = getCloudExecutor("perplexity-web");
+  const b = getCloudExecutor("pplx-web");
   assert.ok(a instanceof PerplexityWebExecutor);
   assert.ok(b instanceof PerplexityWebExecutor);
 });

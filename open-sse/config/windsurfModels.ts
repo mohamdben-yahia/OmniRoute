@@ -67,6 +67,41 @@ export const WINDSURF_MODELS: readonly WindsurfModelCapability[] = Object.freeze
   },
 ]);
 
+export const WINDSURF_DISPLAY_CATALOG: readonly Pick<WindsurfModelCapability, "id" | "name">[] = Object.freeze([
+  {
+    id: "claude-haiku-4.5",
+    name: "Claude Haiku 4.5",
+  },
+  {
+    id: "gpt-5.4",
+    name: "GPT-5.4",
+  },
+  {
+    id: "claude-sonnet-4.6",
+    name: "Claude Sonnet 4.6",
+  },
+  {
+    id: "claude-opus-4.7",
+    name: "Claude Opus 4.7",
+  },
+  {
+    id: "swe-1.6",
+    name: "SWE-1.6",
+  },
+  {
+    id: "swe-1.6-fast",
+    name: "SWE-1.6 Fast",
+  },
+  {
+    id: "kimi-k2.6",
+    name: "Kimi K2.6",
+  },
+  {
+    id: "glm-5.1",
+    name: "GLM-5.1",
+  },
+]);
+
 export function getWindsurfModel(modelId: string): WindsurfModelCapability | null {
   return WINDSURF_MODELS.find((model) => model.id === modelId) || null;
 }
@@ -84,7 +119,8 @@ export function trimWindsurfModelPrefix(modelId: string | null | undefined): str
     return null;
   }
 
-  const trimmed = modelId.slice(WINDSURF_MODEL_PREFIX.length).trim();
+  const qualifiedModelId = modelId as string;
+  const trimmed = qualifiedModelId.slice(WINDSURF_MODEL_PREFIX.length).trim();
   return trimmed || null;
 }
 

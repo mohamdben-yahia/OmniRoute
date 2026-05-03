@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 const { GrokWebExecutor } = await import("../../open-sse/executors/grok-web.ts");
-const { getExecutor, hasSpecializedExecutor } = await import("../../open-sse/executors/index.ts");
+const { getCloudExecutor, hasSpecializedExecutor } = await import("../../open-sse/executors/index.ts");
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -69,7 +69,7 @@ const SIMPLE_RESPONSE = [
 
 test("GrokWebExecutor is registered in executor index", () => {
   assert.ok(hasSpecializedExecutor("grok-web"));
-  const executor = getExecutor("grok-web");
+  const executor = getCloudExecutor("grok-web");
   assert.ok(executor instanceof GrokWebExecutor);
 });
 

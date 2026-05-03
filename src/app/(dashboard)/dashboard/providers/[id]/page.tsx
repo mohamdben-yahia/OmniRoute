@@ -52,7 +52,10 @@ import {
   getClaudeCodeCompatibleRequestDefaults as _getClaudeCodeCompatibleRequestDefaults,
   getCodexRequestDefaults as _getCodexRequestDefaults,
 } from "@/lib/providers/requestDefaults";
-import { resolveDashboardProviderInfo } from "../providerPageUtils";
+import {
+  formatProviderModelsDiscoverySummary,
+  resolveDashboardProviderInfo,
+} from "../providerPageUtils";
 
 type CompatByProtocolMap = Partial<
   Record<
@@ -411,7 +414,7 @@ interface CompatibleModelsSectionProps {
   connections: { id?: string; isActive?: boolean }[];
   isAnthropic?: boolean;
   onImportWithProgress: (
-    fetchModels: () => Promise<{ models: unknown[] }>,
+    fetchModels: () => Promise<{ models: unknown[]; discovery?: unknown }>,
     processModel: (model: unknown) => Promise<boolean>
   ) => Promise<void>;
   t: (key: string, values?: Record<string, unknown>) => string;
@@ -450,6 +453,12 @@ function getModelSourceBadgeClass(source?: string): string {
       return "border-amber-500/30 bg-amber-500/10 text-amber-300";
     case "alias":
       return "border-violet-500/30 bg-violet-500/10 text-violet-300";
+    case "acp-runtime":
+      return "border-cyan-500/30 bg-cyan-500/10 text-cyan-300";
+    case "session-runtime":
+      return "border-blue-500/30 bg-blue-500/10 text-blue-300";
+    case "local-catalog":
+      return "border-slate-500/30 bg-slate-500/10 text-slate-300";
     case "system":
     default:
       return "border-border bg-sidebar/70 text-text-muted";
@@ -979,6 +988,7 @@ export default function ProviderDetailPage() {
     logs: [] as string[],
     error: "",
     importedCount: 0,
+    discoverySummary: "",
   });
   const [modelMeta, setModelMeta] = useState<{
     customModels: CompatModelRow[];
@@ -1797,6 +1807,7 @@ export default function ProviderDetailPage() {
       logs: [],
       error: "",
       importedCount: 0,
+      discoverySummary: "",
     });
 
     try {
@@ -1812,12 +1823,14 @@ export default function ProviderDetailPage() {
         return;
       }
       const fetchedModels = data.models || [];
+      const discoverySummary = formatProviderModelsDiscoverySummary(data.discovery);
       if (fetchedModels.length === 0) {
         setImportProgress((prev) => ({
           ...prev,
           phase: "done",
           status: t("noModelsFound"),
           logs: [t("noModelsReturnedFromEndpoint")],
+          discoverySummary,
         }));
         return;
       }
@@ -1839,6 +1852,7 @@ export default function ProviderDetailPage() {
           importedCount: 0,
           total: 0,
           current: 0,
+          discoverySummary,
         }));
         return;
       }
@@ -1858,6 +1872,7 @@ export default function ProviderDetailPage() {
               ]
             : []),
         ],
+        discoverySummary,
       }));
 
       let importedCount = 0;
@@ -1910,6 +1925,7 @@ export default function ProviderDetailPage() {
             : t("noNewModelsAdded"),
         ],
         importedCount,
+        discoverySummary,
       }));
 
       // Auto-reload after success
@@ -1933,7 +1949,7 @@ export default function ProviderDetailPage() {
 
   // Shared import handler for CompatibleModelsSection
   const handleCompatibleImportWithProgress = async (
-    fetchModels: () => Promise<{ models: any[] }>,
+    fetchModels: () => Promise<{ models: any[]; discovery?: unknown }>,
     processModel: (model: any) => Promise<boolean>
   ) => {
     setShowImportModal(true);
@@ -1945,17 +1961,20 @@ export default function ProviderDetailPage() {
       logs: [],
       error: "",
       importedCount: 0,
+      discoverySummary: "",
     });
 
     try {
       const data = await fetchModels();
       const models = data.models || [];
+      const discoverySummary = formatProviderModelsDiscoverySummary(data.discovery);
       if (models.length === 0) {
         setImportProgress((prev) => ({
           ...prev,
           phase: "done",
           status: t("noModelsFound"),
           logs: [t("noModelsReturnedFromEndpoint")],
+          discoverySummary,
         }));
         return;
       }
@@ -1966,6 +1985,7 @@ export default function ProviderDetailPage() {
         total: models.length,
         status: t("importingModelsProgress", { current: 0, total: models.length }),
         logs: [t("foundModelsStartingImport", { count: models.length })],
+        discoverySummary,
       }));
 
       let importedCount = 0;
@@ -2000,6 +2020,7 @@ export default function ProviderDetailPage() {
             : t("noNewModelsAdded"),
         ],
         importedCount,
+        discoverySummary,
       }));
 
       if (importedCount > 0) {
@@ -3281,6 +3302,12 @@ export default function ProviderDetailPage() {
                     "linear-gradient(90deg, var(--color-primary), var(--color-primary-hover, var(--color-primary)))",
                 }}
               />
+            </div>
+          )}
+
+          {importProgress.discoverySummary && (
+            <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-3">
+              <p className="text-xs text-cyan-200">{importProgress.discoverySummary}</p>
             </div>
           )}
 

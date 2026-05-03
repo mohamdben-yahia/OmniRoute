@@ -15,8 +15,10 @@ import { CliproxyapiExecutor } from "./cliproxyapi.ts";
 import { PerplexityWebExecutor } from "./perplexity-web.ts";
 import { GrokWebExecutor } from "./grok-web.ts";
 import { WindsurfExecutor } from "./windsurf.ts";
+import { WindsurfLocalExecutor } from "./windsurfLocal.ts";
+import { WindsurfHybridExecutor } from "./windsurfHybrid.ts";
 
-const executors = {
+const cloudExecutors = {
   antigravity: new AntigravityExecutor(),
   "gemini-cli": new GeminiCLIExecutor(),
   github: new GithubExecutor(),
@@ -24,35 +26,64 @@ const executors = {
   kiro: new KiroExecutor(),
   codex: new CodexExecutor(),
   cursor: new CursorExecutor(),
-  cu: new CursorExecutor(), // Alias for cursor
+  cu: new CursorExecutor(),
   windsurf: new WindsurfExecutor(),
-  ws: new WindsurfExecutor(), // Alias for windsurf
+  ws: new WindsurfExecutor(),
   pollinations: new PollinationsExecutor(),
-  pol: new PollinationsExecutor(), // Alias
+  pol: new PollinationsExecutor(),
   "cloudflare-ai": new CloudflareAIExecutor(),
-  cf: new CloudflareAIExecutor(), // Alias
+  cf: new CloudflareAIExecutor(),
   "opencode-zen": new OpencodeExecutor("opencode-zen"),
   "opencode-go": new OpencodeExecutor("opencode-go"),
   puter: new PuterExecutor(),
-  pu: new PuterExecutor(), // Alias
+  pu: new PuterExecutor(),
   vertex: new VertexExecutor(),
   cliproxyapi: new CliproxyapiExecutor(),
-  cpa: new CliproxyapiExecutor(), // Alias
+  cpa: new CliproxyapiExecutor(),
   "perplexity-web": new PerplexityWebExecutor(),
-  "pplx-web": new PerplexityWebExecutor(), // Alias
+  "pplx-web": new PerplexityWebExecutor(),
   "grok-web": new GrokWebExecutor(),
 };
 
-const defaultCache = new Map();
+const localExecutors = {
+  windsurf: new WindsurfLocalExecutor(),
+};
 
-export function getExecutor(provider) {
-  if (executors[provider]) return executors[provider];
+const hybridExecutors = {
+  windsurf: new WindsurfHybridExecutor(),
+};
+
+const defaultCache = new Map<string, DefaultExecutor>();
+
+function getDefaultExecutor(provider: string) {
   if (!defaultCache.has(provider)) defaultCache.set(provider, new DefaultExecutor(provider));
-  return defaultCache.get(provider);
+  return defaultCache.get(provider)!;
 }
 
-export function hasSpecializedExecutor(provider) {
-  return !!executors[provider];
+function getExecutorOrThrow<T extends Record<string, unknown>>(pool: T, provider: string, backend: string) {
+  const executor = pool[provider as keyof T];
+  if (executor) return executor;
+  throw new Error(`No ${backend} executor registered for provider '${provider}'`);
+}
+
+export function getCloudExecutor(provider: string) {
+  return getExecutorOrThrow(cloudExecutors, provider, "cloud");
+}
+
+export function getLocalExecutor(provider: string) {
+  return getExecutorOrThrow(localExecutors, provider, "local");
+}
+
+export function getHybridExecutor(provider: string) {
+  return getExecutorOrThrow(hybridExecutors, provider, "hybrid");
+}
+
+export function hasSpecializedExecutor(provider: string) {
+  return Boolean(
+    cloudExecutors[provider as keyof typeof cloudExecutors] ||
+      localExecutors[provider as keyof typeof localExecutors] ||
+      hybridExecutors[provider as keyof typeof hybridExecutors]
+  );
 }
 
 export { BaseExecutor } from "./base.ts";
@@ -73,3 +104,5 @@ export { VertexExecutor } from "./vertex.ts";
 export { PerplexityWebExecutor } from "./perplexity-web.ts";
 export { GrokWebExecutor } from "./grok-web.ts";
 export { WindsurfExecutor } from "./windsurf.ts";
+export { WindsurfLocalExecutor } from "./windsurfLocal.ts";
+export { WindsurfHybridExecutor } from "./windsurfHybrid.ts";

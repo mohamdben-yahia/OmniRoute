@@ -176,3 +176,8 @@ bin/omniroute.mjs
 .omc/
 audit-report.json
 bun.lock
+*.json
+*.txt
+*.py
+*.log
+artifacts/windsurf-native/*

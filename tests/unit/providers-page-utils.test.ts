@@ -189,3 +189,32 @@ test("compatible catalog entries keep dynamic compatible metadata", () => {
   assert.equal(compatibleProvider?.apiType, "responses");
   assert.equal(compatibleProvider?.baseUrl, "https://example.test");
 });
+
+test("provider model discovery summaries stay user-facing for Windsurf runtime states", () => {
+  assert.equal(
+    providerPageUtils.formatProviderModelsDiscoverySummary({
+      status: "present",
+      source: "session/new",
+      transport: "acp_runtime",
+    }),
+    "Live Windsurf ACP runtime discovery"
+  );
+
+  assert.equal(
+    providerPageUtils.formatProviderModelsDiscoverySummary({
+      status: "enriched",
+      source: "session/load",
+      transport: "session_runtime",
+    }),
+    "Loaded Windsurf session discovery fallback"
+  );
+
+  assert.equal(
+    providerPageUtils.formatProviderModelsDiscoverySummary({
+      status: "missing",
+      source: "none",
+      transport: "local_catalog",
+    }),
+    "Static Windsurf catalog fallback because runtime credentials are unavailable"
+  );
+});

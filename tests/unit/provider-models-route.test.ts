@@ -12,6 +12,7 @@ const providersDb = await import("../../src/lib/db/providers.ts");
 const modelsDb = await import("../../src/lib/db/models.ts");
 const providerModelsRoute = await import("../../src/app/api/providers/[id]/models/route.ts");
 const antigravityVersion = await import("../../open-sse/services/antigravityVersion.ts");
+const windsurfLocal = await import("../../src/lib/acp/windsurfLocal.ts");
 
 const originalFetch = globalThis.fetch;
 const originalAllowPrivateProviderUrls = process.env.OMNIROUTE_ALLOW_PRIVATE_PROVIDER_URLS;
@@ -366,7 +367,7 @@ test("provider models route returns the local catalog for OAuth-backed Qwen conn
   assert.ok(Array.isArray(body.models));
 });
 
-test("provider models route returns the local catalog for Windsurf OAuth connections", async () => {
+test("provider models route falls back to the local catalog when Windsurf ACP discovery fails", async () => {
   const connection = await seedConnection("windsurf", {
     authType: "oauth",
     accessToken: "windsurf-access",
@@ -379,9 +380,92 @@ test("provider models route returns the local catalog for Windsurf OAuth connect
   assert.equal(response.status, 200);
   assert.equal(body.provider, "windsurf");
   assert.equal(body.source, "local_catalog");
+  assert.equal(body.warning, "Windsurf runtime models unavailable — showing cached display catalog");
   assert.ok(Array.isArray(body.models));
-  assert.ok(body.models.length > 0);
-  assert.ok(body.models.some((model) => model.id === "gpt4o"));
+  assert.deepEqual(
+    body.models.map((model: any) => model.id),
+    [
+      "claude-haiku-4.5",
+      "gpt-5.4",
+      "claude-sonnet-4.6",
+      "claude-opus-4.7",
+      "swe-1.6",
+      "swe-1.6-fast",
+      "kimi-k2.6",
+      "glm-5.1",
+    ]
+  );
+  assert.deepEqual(body.models[0], {
+    id: "claude-haiku-4.5",
+    name: "Claude Haiku 4.5",
+    owned_by: "windsurf",
+    displayable: true,
+    authorized: false,
+    executable: false,
+    reason: "catalog fallback because runtime model authorization is unavailable",
+  });
+  assert.deepEqual(body.discovery, {
+    status: "failed",
+    source: "none",
+    transport: "local_catalog",
+  });
+});
+
+test("provider models route exposes Windsurf semantic fields from runtime discovery end-to-end", async () => {
+  const connection = await seedConnection("windsurf", {
+    authType: "oauth",
+    accessToken: "windsurf-access",
+    apiKey: null,
+  });
+  const originalBootstrap = windsurfLocal.windsurfLocalAdapter.bootstrapWindsurfSession;
+
+  windsurfLocal.windsurfLocalAdapter.bootstrapWindsurfSession = async () => ({
+    sessionId: "windsurf-route-test-session",
+    modes: {},
+    configOptions: [],
+    models: {
+      availableModels: [
+        { id: "claude-sonnet-4.6", name: "Claude Sonnet 4.6", owned_by: "windsurf" },
+      ],
+      currentModelId: "claude-sonnet-4.6",
+    },
+    modelDiscovery: {
+      status: "present",
+      source: "session/new",
+    },
+    diagnostics: {
+      rpc: { requests: [], responses: [] },
+      notifications: [],
+      stderr: [],
+    },
+  });
+
+  try {
+    const response = await callRoute(connection.id);
+    const body = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(body.provider, "windsurf");
+    assert.equal(body.source, "acp_runtime");
+    assert.deepEqual(body.discovery, {
+      status: "present",
+      source: "session/new",
+      transport: "acp_runtime",
+    });
+    assert.deepEqual(body.models, [
+      {
+        id: "claude-sonnet-4.6",
+        name: "Claude Sonnet 4.6",
+        owned_by: "windsurf",
+        displayable: true,
+        authorized: true,
+        executable: true,
+        reason: "runtime model discovered from Windsurf session",
+      },
+    ]);
+  } finally {
+    windsurfLocal.windsurfLocalAdapter.bootstrapWindsurfSession = originalBootstrap;
+  }
 });
 
 test("provider models route filters hidden models from the static Claude catalog when requested", async () => {

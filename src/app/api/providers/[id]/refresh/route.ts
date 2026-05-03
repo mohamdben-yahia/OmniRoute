@@ -46,7 +46,10 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     const provider = connection.provider;
     if (provider === "windsurf") {
       return NextResponse.json(
-        { error: `Provider ${provider} does not support manual token refresh` },
+        {
+          error: "Windsurf requires re-authentication",
+          requiresReauth: true,
+        },
         { status: 400 }
       );
     }

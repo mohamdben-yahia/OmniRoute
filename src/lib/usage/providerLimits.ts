@@ -14,7 +14,7 @@ import { syncToCloud } from "@/lib/cloudSync";
 import { setQuotaCache } from "@/domain/quotaCache";
 import { getMachineId } from "@/shared/utils/machine";
 import { USAGE_SUPPORTED_PROVIDERS } from "@/shared/constants/providers";
-import { getExecutor } from "@omniroute/open-sse/executors/index.ts";
+import { getCloudExecutor } from "@omniroute/open-sse/executors/index.ts";
 import { getUsageForProvider } from "@omniroute/open-sse/services/usage.ts";
 import { runWithProxyContext } from "@omniroute/open-sse/utils/proxyFetch.ts";
 
@@ -87,7 +87,7 @@ async function syncToCloudIfEnabled() {
 }
 
 async function refreshAndUpdateCredentials(connection: ProviderConnectionLike) {
-  const executor = getExecutor(connection.provider);
+  const executor = getCloudExecutor(connection.provider);
   const credentials = {
     accessToken: connection.accessToken,
     refreshToken: connection.refreshToken,
