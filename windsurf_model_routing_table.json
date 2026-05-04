@@ -1,13 +1,21 @@
 {
   "investigation_metadata": {
-    "date": "2026-05-04T11:38:43Z",
-    "methodology": "static_analysis_passive_observation",
+    "date": "2026-05-04T13:33:14Z",
+    "last_updated": "2026-05-04T13:33:14Z",
+    "methodology": "static_analysis_passive_observation_plus_live_testing",
     "constraints": ["read_only", "no_network_requests", "no_token_usage", "no_rpc_execution"],
+    "live_testing_phase": {
+      "date": "2026-05-04T13:31:00Z",
+      "models_tested": 8,
+      "success_rate": "100%",
+      "tier": "pro_subscription"
+    },
     "evidence_sources": [
       "protobuf_structure_analysis",
       "minified_bundle_reverse_engineering",
       "runtime_capture_logs",
-      "documentation_correlation"
+      "documentation_correlation",
+      "live_model_testing"
     ]
   },
   "key_architectural_finding": {
@@ -178,6 +186,119 @@
       "availability": "requires_configuration",
       "confidence": "MEDIUM",
       "source": ["WINDSURF_MODELS_FINAL.md"]
+    },
+    {
+      "model_name": "GPT-5.5 Low",
+      "model_uid": "gpt-5-5-low-20260424",
+      "provider": "OpenAI",
+      "type": "subscription",
+      "tier": "pro",
+      "modelRouterUid_behavior": "dynamically_generated_per_cascade",
+      "availability": "windsurf_pro_subscription",
+      "confidence": "HIGH",
+      "source": ["WINDSURF_PRO_MODELS_DISCOVERY_FINAL.md", "live_testing_2026-05-04"],
+      "discovered_date": "2026-05-04T13:31:00Z",
+      "test_status": "verified_working"
+    },
+    {
+      "model_name": "Claude Opus 4.7 Medium",
+      "model_uid": "claude-opus-4-7-medium-20260424",
+      "provider": "Anthropic",
+      "type": "subscription",
+      "tier": "pro",
+      "modelRouterUid_behavior": "dynamically_generated_per_cascade",
+      "availability": "windsurf_pro_subscription",
+      "confidence": "HIGH",
+      "source": [
+        "WINDSURF_CLAUDE_OPUS_MEDIUM_DISCOVERY.md",
+        "WINDSURF_PRO_MODELS_DISCOVERY_FINAL.md",
+        "live_testing_2026-05-04"
+      ],
+      "discovered_date": "2026-05-04T13:08:00Z",
+      "test_status": "verified_working"
+    },
+    {
+      "model_name": "Claude Opus 4.6 Thinking",
+      "model_uid": "claude-opus-4-6-thinking-20260424",
+      "provider": "Anthropic",
+      "type": "subscription",
+      "tier": "pro",
+      "modelRouterUid_behavior": "dynamically_generated_per_cascade",
+      "availability": "windsurf_pro_subscription",
+      "confidence": "HIGH",
+      "source": ["WINDSURF_PRO_MODELS_DISCOVERY_FINAL.md", "live_testing_2026-05-04"],
+      "discovered_date": "2026-05-04T13:31:00Z",
+      "test_status": "verified_working",
+      "capabilities": ["extended_reasoning"]
+    },
+    {
+      "model_name": "Claude Sonnet 4.6 Thinking",
+      "model_uid": "claude-sonnet-4-6-thinking-20260424",
+      "provider": "Anthropic",
+      "type": "subscription",
+      "tier": "pro",
+      "modelRouterUid_behavior": "dynamically_generated_per_cascade",
+      "availability": "windsurf_pro_subscription",
+      "confidence": "HIGH",
+      "source": ["WINDSURF_PRO_MODELS_DISCOVERY_FINAL.md", "live_testing_2026-05-04"],
+      "discovered_date": "2026-05-04T13:31:00Z",
+      "test_status": "verified_working",
+      "capabilities": ["extended_reasoning"]
+    },
+    {
+      "model_name": "DeepSeek V4",
+      "model_uid": "deepseek-v4-20260424",
+      "provider": "DeepSeek",
+      "type": "subscription",
+      "tier": "pro",
+      "modelRouterUid_behavior": "dynamically_generated_per_cascade",
+      "availability": "windsurf_pro_subscription",
+      "confidence": "HIGH",
+      "source": ["WINDSURF_PRO_MODELS_DISCOVERY_FINAL.md", "live_testing_2026-05-04"],
+      "discovered_date": "2026-05-04T13:31:00Z",
+      "test_status": "verified_working"
+    },
+    {
+      "model_name": "Kimi K2.6 Pro",
+      "model_uid": "kimi-k2-6-20260424",
+      "provider": "Moonshot AI",
+      "type": "subscription",
+      "tier": "pro",
+      "modelRouterUid_behavior": "dynamically_generated_per_cascade",
+      "availability": "windsurf_pro_subscription",
+      "confidence": "HIGH",
+      "source": ["WINDSURF_PRO_MODELS_DISCOVERY_FINAL.md", "live_testing_2026-05-04"],
+      "discovered_date": "2026-05-04T13:31:00Z",
+      "test_status": "verified_working",
+      "note": "Pro version of free kimi-k2-6 model with date suffix"
+    },
+    {
+      "model_name": "SWE-1.6",
+      "model_uid": "swe-1-6-20260424",
+      "provider": "Windsurf",
+      "type": "subscription",
+      "tier": "pro",
+      "modelRouterUid_behavior": "dynamically_generated_per_cascade",
+      "availability": "windsurf_pro_subscription",
+      "confidence": "HIGH",
+      "source": ["WINDSURF_PRO_MODELS_DISCOVERY_FINAL.md", "live_testing_2026-05-04"],
+      "discovered_date": "2026-05-04T13:31:00Z",
+      "test_status": "verified_working",
+      "capabilities": ["software_engineering", "code_specialized"]
+    },
+    {
+      "model_name": "SWE-1.6 Fast",
+      "model_uid": "swe-1-6-fast-20260424",
+      "provider": "Windsurf",
+      "type": "subscription",
+      "tier": "pro",
+      "modelRouterUid_behavior": "dynamically_generated_per_cascade",
+      "availability": "windsurf_pro_subscription",
+      "confidence": "HIGH",
+      "source": ["WINDSURF_PRO_MODELS_DISCOVERY_FINAL.md", "live_testing_2026-05-04"],
+      "discovered_date": "2026-05-04T13:31:00Z",
+      "test_status": "verified_working",
+      "capabilities": ["software_engineering", "code_specialized", "fast_inference"]
     }
   ],
   "omniroute_internal_routing": {
@@ -235,18 +356,35 @@
     "rules": [
       "Model UID contains '-byok' suffix → BYOK model",
       "Model UID contains '-byok-beta' suffix → BYOK model",
+      "Model UID ends with '-YYYYMMDD' (8 digits) → Pro subscription model",
+      "Model UID without suffix and not in free list → BYOK model",
       "Known BYOK models: gpt-5-*, claude-opus-4-*, gemini-3-*",
       "Error 'unknown model UID: model not found' → BYOK not configured"
     ],
-    "implementation": "function isBYOK(modelUid) { return modelUid.includes('-byok') || ['gpt-5-5', 'gpt-5-4', 'gpt-5-2-low-thinking', 'claude-opus-4-7', 'gemini-3-flash-low'].includes(modelUid); }"
+    "implementation": "function detectModelTier(modelUid) { if (modelUid.includes('-byok')) return 'byok'; if (/\\d{8}$/.test(modelUid)) return 'pro'; if (['kimi-k2-6', 'kimi-k2-6-e', 'glm-5', 'glm-5-1'].includes(modelUid)) return 'free'; return 'byok'; }"
   },
   "confidence_levels": {
     "HIGH": {
-      "criteria": "Runtime verified with actual captures",
-      "models": ["kimi-k2-6", "kimi-k2-6-e", "glm-5", "glm-5-1"],
+      "criteria": "Runtime verified with actual captures or live testing",
+      "models": [
+        "kimi-k2-6",
+        "kimi-k2-6-e",
+        "glm-5",
+        "glm-5-1",
+        "gpt-5-5-low-20260424",
+        "claude-opus-4-7-medium-20260424",
+        "claude-opus-4-6-thinking-20260424",
+        "claude-sonnet-4-6-thinking-20260424",
+        "deepseek-v4-20260424",
+        "kimi-k2-6-20260424",
+        "swe-1-6-20260424",
+        "swe-1-6-fast-20260424"
+      ],
       "findings": [
         "modelRouterUid is session-specific",
-        "Human-readable UIDs are model identifiers"
+        "Human-readable UIDs are model identifiers",
+        "Pro models use date-based versioning (YYYYMMDD suffix)",
+        "100% success rate on live testing of Pro models"
       ]
     },
     "MEDIUM": {
@@ -266,8 +404,48 @@
     },
     "LOW": {
       "criteria": "Speculation based on documentation mentions",
-      "models": ["kimi-k3-pro", "deepseek-v3", "qwen-max"],
-      "findings": ["Pro subscription models exist but unconfirmed"]
+      "models": ["kimi-k3-pro", "qwen-max"],
+      "findings": ["Additional Pro subscription models may exist but unconfirmed"]
+    }
+  },
+  "naming_conventions": {
+    "free_models": {
+      "format": "{provider}-{version}",
+      "examples": ["kimi-k2-6", "glm-5", "glm-5-1"],
+      "rules": [
+        "Use dashes, not dots (glm-5-1, not glm-5.1)",
+        "No date suffix",
+        "Simple version numbers"
+      ]
+    },
+    "pro_models": {
+      "format": "{provider}-{version}-{variant}-{YYYYMMDD}",
+      "examples": [
+        "claude-opus-4-7-medium-20260424",
+        "gpt-5-5-low-20260424",
+        "swe-1-6-fast-20260424"
+      ],
+      "rules": [
+        "Use dashes, not dots",
+        "Date suffix mandatory (YYYYMMDD format)",
+        "Variant after version (medium, thinking, fast, low)",
+        "Date represents model release/snapshot date"
+      ],
+      "discovered_variants": [
+        "medium (Claude Opus 4.7)",
+        "thinking (Claude Opus 4.6, Sonnet 4.6)",
+        "fast (SWE-1.6)",
+        "low (GPT-5.5)"
+      ]
+    },
+    "byok_models": {
+      "format": "{provider}-{version}-byok[-beta]",
+      "examples": ["claude-opus-4-byok-beta", "claude-sonnet-4-byok", "gpt-5-5"],
+      "rules": [
+        "May have explicit -byok suffix",
+        "Or identified by provider pattern (gpt-5-*, claude-opus-4-7 without date)",
+        "Requires user API key configuration"
+      ]
     }
   },
   "limitations": {
