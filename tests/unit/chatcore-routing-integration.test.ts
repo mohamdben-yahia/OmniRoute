@@ -132,22 +132,22 @@ test("chatCore executes the executor resolved from routing deps", async () => {
   });
   assert.deepEqual(observedRouteContext, {
     routeContext: {
-      modelId: "windsurf/claude-sonnet-4.6",
-      provider: "windsurf",
-      executionMode: "cloud_only",
-      requiresLocal: false,
-      supportsLocal: false,
-      supportsCloud: true,
+      modelId: "windsurf-local/claude-sonnet-4.6",
+      provider: "windsurf-local",
+      executionMode: "local_only",
+      requiresLocal: true,
+      supportsLocal: true,
+      supportsCloud: false,
       isPremium: true,
       toolCalling: false,
       runtime: {
-        lsOk: false,
-        cloudOk: true,
+        lsOk: true,
+        cloudOk: false,
         source: "capability_defaults",
       },
     },
     request: {
-      provider: "windsurf",
+      provider: "windsurf-local",
       model: "claude-sonnet-4.6",
       requestedProvider: "windsurf",
       requestedModel: "claude-sonnet-4.6",
@@ -254,13 +254,13 @@ test("chatCore builds routing context from effective aliased model", async () =>
   });
   assert.equal(observedRouteContext.routeContext.modelId, "windsurf/alias-target");
   assert.equal(observedRouteContext.routeContext.provider, "windsurf");
-  assert.equal(observedRouteContext.routeContext.executionMode, "cloud_only");
+  assert.equal(observedRouteContext.routeContext.executionMode, "prefer_local");
   assert.equal(observedRouteContext.routeContext.requiresLocal, false);
-  assert.equal(observedRouteContext.routeContext.supportsLocal, false);
+  assert.equal(observedRouteContext.routeContext.supportsLocal, true);
   assert.equal(observedRouteContext.routeContext.supportsCloud, true);
   assert.equal(observedRouteContext.routeContext.toolCalling, false);
   assert.deepEqual(observedRouteContext.routeContext.runtime, {
-    lsOk: false,
+    lsOk: true,
     cloudOk: true,
     source: "capability_defaults",
   });

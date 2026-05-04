@@ -5,12 +5,10 @@ $MitmScript = Join-Path $CaptureDir 'mitm_dump.py'
 $TrafficFile = Join-Path $CaptureDir 'traffic.jsonl'
 $MitmStdout = Join-Path $CaptureDir 'mitmproxy.stdout.log'
 $MitmStderr = Join-Path $CaptureDir 'mitmproxy.stderr.log'
-$ProfileDir = Join-Path $CaptureDir 'windsurf-profile'
 $WindsurfExe = 'C:\Users\amine\AppData\Local\Programs\Windsurf\Windsurf.exe'
 $Proxy = '127.0.0.1:8080'
 
 New-Item -ItemType Directory -Force -Path $CaptureDir | Out-Null
-New-Item -ItemType Directory -Force -Path $ProfileDir | Out-Null
 if (Test-Path $TrafficFile) { Remove-Item $TrafficFile -Force }
 if (Test-Path $MitmStdout) { Remove-Item $MitmStdout -Force }
 if (Test-Path $MitmStderr) { Remove-Item $MitmStderr -Force }
@@ -26,7 +24,6 @@ $env:HTTPS_PROXY = "http://$Proxy"
 $env:ALL_PROXY = "http://$Proxy"
 
 $windsurfArgs = @(
-  '--user-data-dir=' + $ProfileDir,
   '--proxy-server=' + $Proxy,
   '--proxy-bypass-list=<-loopback>',
   '--ignore-certificate-errors',

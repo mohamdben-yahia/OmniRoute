@@ -161,9 +161,9 @@ function buildRoutingPolicy(provider: string | null) {
 
   if (normalized === "windsurf") {
     return {
-      executionMode: "cloud_only" as const,
+      executionMode: "prefer_local" as const,
       requiresLocal: false,
-      supportsLocal: false,
+      supportsLocal: true,
       supportsCloud: true,
     };
   }

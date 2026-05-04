@@ -25,7 +25,7 @@ test("resolveWindsurfBackend passes non-Windsurf providers through unchanged", (
   });
 });
 
-test("resolveWindsurfBackend keeps plain Windsurf on cloud even when local runtime is healthy", () => {
+test("resolveWindsurfBackend stabilizes Windsurf to windsurf-local when runtime is healthy and the model is available locally", () => {
   const result = resolveWindsurfBackend({
     requestedProvider: "windsurf",
     requestedModel: "claude-sonnet-4.6",
@@ -38,9 +38,9 @@ test("resolveWindsurfBackend keeps plain Windsurf on cloud even when local runti
     },
   });
 
-  assert.equal(result.effectiveProvider, "windsurf");
+  assert.equal(result.effectiveProvider, "windsurf-local");
   assert.equal(result.effectiveModel, "claude-sonnet-4.6");
-  assert.match(result.reason, /cloud/i);
+  assert.match(result.reason, /local/i);
 });
 
 test("resolveWindsurfBackend keeps Windsurf on cloud when runtime is unavailable", () => {

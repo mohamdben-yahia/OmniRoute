@@ -70,5 +70,67 @@ test("report builder marks mixed success as partial observability", () => {
   const metrics = reports.buildMetrics(["same-model-small", "different-model", "tools-on"]);
   assert.equal(metrics.first_sink_observability_rate, "2/3");
   assert.equal(metrics.trace_propagation_status_by_trace["different-model"], "BROKEN");
-  assert.deepEqual(metrics.broken_points_by_trace["different-model"], ["transport hook"]);
+  assert.deepEqual(metrics.broken_points_by_trace["different-model"], ["downstream_transport_or_inference"]);
+});
+
+test("shadow lifecycle builder segments reset boundaries into independent graphs", () => {
+  const reports = createTraceReportBuilder();
+
+  reports.recordLifecycleEvent({
+    target_id: "target-a",
+    timestamp: "2026-05-02T12:00:00.000Z",
+    event: "Runtime.executionContextCreated",
+    renderer_pid: 111,
+  });
+  reports.recordLifecycleEvent({
+    target_id: "target-a",
+    timestamp: "2026-05-02T12:00:01.000Z",
+    event: "Page.frameNavigated",
+  });
+  reports.recordLifecycleEvent({
+    target_id: "target-a",
+    timestamp: "2026-05-02T12:00:02.000Z",
+    event: "bridge-response",
+    bridge_name: "window.api",
+  });
+  reports.recordLifecycleEvent({
+    target_id: "target-a",
+    timestamp: "2026-05-02T12:00:03.000Z",
+    event: "Network.requestWillBeSent",
+    request_url: "https://example.invalid/bootstrap",
+  });
+  reports.recordLifecycleEvent({
+    target_id: "target-a",
+    timestamp: "2026-05-02T12:00:04.000Z",
+    event: "Runtime.executionContextDestroyed",
+  });
+  reports.recordLifecycleEvent({
+    target_id: "target-b",
+    timestamp: "2026-05-02T12:00:05.000Z",
+    event: "Runtime.executionContextCreated",
+    renderer_pid: 222,
+  });
+  reports.recordLifecycleEvent({
+    target_id: "target-b",
+    timestamp: "2026-05-02T12:00:06.000Z",
+    event: "Page.frameNavigated",
+  });
+
+  const graphs = reports.buildShadowLifecycleGraphs();
+
+  assert.equal(graphs.length, 2);
+  assert.equal(graphs[0].graph_id, "G1");
+  assert.equal(graphs[0].state_table.t4_app_ready_inferred.status, "YES");
+  assert.equal(graphs[0].conclusion.app_ready_inferred, "YES");
+  assert.equal(graphs[0].conclusion.browser_window_stable, "NO");
+  assert.equal(graphs[1].graph_id, "G2");
+  assert.equal(graphs[1].state_table.t2_ipc_bridge_live.status, "absent");
+  assert.equal(graphs[1].conclusion.app_ready_inferred, "NO");
+  assert.deepEqual(graphs[0].reset_boundaries, [
+    {
+      timestamp: "2026-05-02T12:00:04.000Z",
+      reason: "Runtime.executionContextDestroyed",
+      type: "hard",
+    },
+  ]);
 });

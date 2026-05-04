@@ -39,13 +39,23 @@ export function resolveWindsurfBackend({
     };
   }
 
-  void runtime;
+  const localModelAvailable = runtime.lsOk && runtime.availableModels.includes(requestedModel);
+
+  if (localModelAvailable) {
+    return {
+      requestedProvider,
+      requestedModel,
+      effectiveProvider: "windsurf-local",
+      effectiveModel: requestedModel,
+      reason: "healthy local Windsurf runtime advertises the requested model, so execution is stabilized to windsurf-local",
+    };
+  }
 
   return {
     requestedProvider,
     requestedModel,
     effectiveProvider: "windsurf",
     effectiveModel: requestedModel,
-    reason: "production Windsurf remains on cloud execution even when a local runtime is present",
+    reason: "cloud fallback because the local Windsurf runtime is unavailable or does not advertise the requested model",
   };
 }

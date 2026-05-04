@@ -320,3 +320,4 @@ artifacts/windsurf-native/
 # Windsurf archive scripts (keep these - they're tools)
 # scripts/copy_windsurf_archive.ps1
 # scripts/copy_windsurf_analysis_complete.ps1
+tools/*

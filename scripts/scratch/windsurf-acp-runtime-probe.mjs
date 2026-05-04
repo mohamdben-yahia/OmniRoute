@@ -139,6 +139,8 @@ function send(request, timeoutMs = 45_000) {
   });
 }
 
+const promptText = process.env.WINDSURF_ACP_PROMPT || "Reply with exactly: WINDSURF_RUNTIME_OK";
+
 const requests = {
   initialize: {
     method: "initialize",
@@ -211,6 +213,21 @@ try {
       modelsCount: Array.isArray(loadResponse.result?.models?.availableModels)
         ? loadResponse.result.models.availableModels.length
         : 0,
+    });
+
+    const promptResponse = await send({
+      method: "session/prompt",
+      params: {
+        sessionId,
+        prompt: [{ type: "text", text: promptText }],
+      },
+    }, 90_000);
+    add({
+      stream: "summary",
+      method: "session/prompt",
+      resultKeys: Object.keys(promptResponse.result || {}),
+      error: promptResponse.error || null,
+      responsePreview: JSON.stringify(promptResponse.result || promptResponse.error || null).slice(0, 2000),
     });
   }
 } catch (error) {

@@ -11,6 +11,8 @@ const { createTraceReportBuilder } = require("../../scripts/scratch/windsurf-tra
 const {
   createProviderWrapper,
   createRpcWrapper,
+  createBootstrapState,
+  observeLifecycleMethod,
 } = require("../../scripts/scratch/windsurf-model-runtime-hook.cjs");
 
 test("provider wrapper records provider entry and preserves trace id through awaited method", async () => {
@@ -206,4 +208,43 @@ test("trace context resolves rpc-bound trace ids when async context is absent", 
 
   assert.equal(traces.resolveTraceId({ rpcCallId: "rpc-lost-context" }), "trace-rpc-fallback");
   assert.equal(traces.resolveTraceId({ rpcCallId: "missing" }), TRACE_NOT_OBSERVED);
+});
+
+test("observeLifecycleMethod records first intercepted method and languageServerStarted payload", () => {
+  const bootstrapState = createBootstrapState();
+  const bootstrapEvents: Array<Record<string, unknown>> = [];
+  const csrfEvents: Array<Record<string, unknown>> = [];
+
+  observeLifecycleMethod({
+    bootstrapState,
+    methodName: "languageServerStarted",
+    payload: {
+      languageServerPort: 51234,
+      host: "127.0.0.1",
+      csrfToken: "csrf-1",
+    },
+    processSurface: "host",
+    processPid: 4321,
+    processPpid: 1234,
+    traceId: "trace-ls",
+    now: "2026-05-02T10:00:00.000Z",
+    recordBootstrapStep(step: string, patch: Record<string, unknown>) {
+      bootstrapEvents.push({ step, patch });
+      Object.assign(bootstrapState, patch);
+      bootstrapState.steps.push({ at: "2026-05-02T10:00:00.000Z", step, patch });
+    },
+    writeLiveCsrfEvent(event: string, payload: Record<string, unknown>) {
+      csrfEvents.push({ event, payload });
+    },
+  });
+
+  assert.equal(bootstrapState.firstInterceptedMethod, "languageServerStarted");
+  assert.equal(bootstrapState.languageServerStartedSeen, true);
+  assert.equal(bootstrapState.languageServerPort, 51234);
+  assert.equal(bootstrapState.csrfToken, "csrf-1");
+  assert.equal(bootstrapState.processPid, 4321);
+  assert.equal(bootstrapState.processPpid, 1234);
+  assert.deepEqual(bootstrapState.interceptedMethodsSample, ["languageServerStarted"]);
+  assert.equal(bootstrapEvents.at(-1)?.step, "promiseClient.languageServerStarted");
+  assert.equal(csrfEvents.at(-1)?.event, "languageServerStarted");
 });

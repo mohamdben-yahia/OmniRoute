@@ -22,9 +22,6 @@ export class ExecutionAdapter {
 
     const provider = decision.provider.trim();
     if (decision.primary === "local_ls") {
-      if (provider.toLowerCase() === "windsurf") {
-        throw new Error("Production windsurf does not support local_ls executor resolution");
-      }
       return this.factory.getLocalExecutor(provider);
     }
     if (decision.primary === "hybrid") return this.factory.getHybridExecutor(provider);

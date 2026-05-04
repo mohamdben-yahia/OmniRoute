@@ -1,17 +1,17 @@
 # Windsurf Runtime Inspection Report
 
-**Date**: 2026-05-03T18:17:12Z  
-**Observer**: Passive Cascade Observer v1.0  
+**Date**: 2026-05-03T18:17:12Z
+**Observer**: Passive Cascade Observer v1.0
 **Method**: Read-only forensic observation (no RPC calls, no runtime mutation)
 
 ---
 
 ## Executive Summary
 
-**Status**: `observed` - Windsurf runtime is alive and active  
-**Current Epoch**: `20260503T190917` (started 2026-05-03 19:09:17 local time)  
-**Active Processes**: 11 Windsurf processes running  
-**Total Events Captured**: 65 events across 6 epochs  
+**Status**: `observed` - Windsurf runtime is alive and active
+**Current Epoch**: `20260503T190917` (started 2026-05-03 19:09:17 local time)
+**Active Processes**: 11 Windsurf processes running
+**Total Events Captured**: 65 events across 6 epochs
 **Evidence Quality**: Runtime-current bootstrap signals confirmed, no cascade/submit activity in current session
 
 ---
@@ -214,23 +214,23 @@ if snapshot["status"] == "observed":
     # Windsurf runtime is alive
     evidence = snapshot.get("evidenceSummary", {})
     live_runtime = evidence.get("live_runtime", {})
-    
+
     if live_runtime.get("count", 0) > 0:
         # Current epoch is active
         # Check most recent event timestamp
         events = snapshot.get("events", [])
         live_events = [e for e in events if e.get("evidenceSource", {}).get("kind") == "live_runtime"]
-        
+
         if live_events:
             most_recent = max(live_events, key=lambda e: e.get("timestamp", ""))
             timestamp = most_recent.get("timestamp")
-            
+
             # Parse timestamp and check freshness
             from datetime import datetime, timedelta
             event_time = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
             now = datetime.now(event_time.tzinfo)
             age = now - event_time
-            
+
             if age < timedelta(minutes=5):
                 # Recent activity, safe to route
                 return route_to_windsurf()
@@ -290,7 +290,7 @@ else:
 
 ---
 
-**Report Generated**: 2026-05-03T18:17:12Z  
-**Observer Version**: 1.0  
-**Capture Method**: Passive forensic observation  
+**Report Generated**: 2026-05-03T18:17:12Z
+**Observer Version**: 1.0
+**Capture Method**: Passive forensic observation
 **Confidence Level**: High for runtime health, Low for submit detection
