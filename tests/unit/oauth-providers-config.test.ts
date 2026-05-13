@@ -491,9 +491,9 @@ test("Gemini and Antigravity run mocked browser OAuth exchanges and post-exchang
     jsonResponse({ cloudaicompanionProject: { id: "gemini-project" } }),
     jsonResponse({ access_token: "anti-access", refresh_token: "anti-refresh", expires_in: 7200 }),
     jsonResponse({ email: "anti@example.com" }),
-    (_url, init = {}) => {
-      assert.equal(init.method, "POST");
+    (_url, init) => {
       const requestInit = asRequestInit(init);
+      assert.equal(requestInit.method, "POST");
       const headers = requestInit.headers as Record<string, string>;
 
       assert.equal(headers.Authorization, "Bearer anti-access");
@@ -519,7 +519,7 @@ test("Gemini and Antigravity run mocked browser OAuth exchanges and post-exchang
         allowedTiers: [{ id: "tier-default", isDefault: true }],
       });
     },
-    (_url, init = {}) => {
+    (_url, init) => {
       const requestInit = asRequestInit(init);
       const headers = requestInit.headers as Record<string, string>;
 

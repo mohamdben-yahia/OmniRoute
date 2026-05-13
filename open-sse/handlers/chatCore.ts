@@ -190,6 +190,7 @@ import {
 import { setGeminiThoughtSignatureMode } from "../services/geminiThoughtSignatureStore.ts";
 import { fetchLiveProviderLimits } from "@/lib/usage/providerLimits";
 import { isClaudeExtraUsageBlockEnabled } from "@/lib/providers/claudeExtraUsage";
+import type { ExecutorLike } from "@/lib/routing/executionAdapter";
 
 const MEMORY_EXTRACTION_TEXT_LIMIT = 64 * 1024;
 const CHAT_LOG_TEXT_LIMIT = 64 * 1024;
@@ -961,7 +962,7 @@ const defaultWindsurfRuntimeInspector = createWindsurfRuntimeInspector();
 
 async function resolveExecutionPlan({
   routeContext,
-}: ResolveExecutionPlanInput): Promise<RoutingResolution> {
+}: ResolveExecutionPlanInput): Promise<RoutingResolution<ExecutorLike>> {
   const decision = defaultRoutingKernel.route(routeContext);
   return {
     decision,
@@ -969,7 +970,9 @@ async function resolveExecutionPlan({
   };
 }
 
-function freezeRoutingResolution(resolution: RoutingResolution): RoutingResolution {
+function freezeRoutingResolution(
+  resolution: RoutingResolution<ExecutorLike>
+): RoutingResolution<ExecutorLike> {
   const trace = Object.isFrozen(resolution.decision.trace)
     ? resolution.decision.trace
     : Object.freeze({ ...resolution.decision.trace });
@@ -1023,7 +1026,7 @@ async function buildExecutionPlan({
   model: string;
   body: Record<string, unknown> | null | undefined;
   providerAlias: string;
-  planResolver: (input: ResolveExecutionPlanInput) => Promise<RoutingResolution>;
+  planResolver: (input: ResolveExecutionPlanInput) => Promise<RoutingResolution<ExecutorLike>>;
   inspectWindsurfRuntime: (input: {
     requestedModel: string;
     credentials: { apiKey?: string };
@@ -1042,9 +1045,9 @@ async function buildExecutionPlan({
   }>;
   executionCredentials: { apiKey?: string };
   cwd: string;
-}): Promise<ExecutionPlan> {
+}): Promise<ExecutionPlan<ExecutorLike>> {
   const fallbackChain = buildPlannedFallbackChain(model);
-  const attempts: PlannedExecutionAttempt[] = [];
+  const attempts: PlannedExecutionAttempt<ExecutorLike>[] = [];
 
   for (const attemptModel of [model, ...fallbackChain]) {
     const runtime =
@@ -1112,8 +1115,8 @@ function selectNextPlannedAttempt({
   statusCode,
   message,
 }: {
-  attempts: PlannedExecutionAttempt[];
-  currentAttempt: PlannedExecutionAttempt;
+  attempts: PlannedExecutionAttempt<ExecutorLike>[];
+  currentAttempt: PlannedExecutionAttempt<ExecutorLike>;
   statusCode: number;
   message: string;
 }) {
@@ -1192,6 +1195,7 @@ export async function handleChatCore({
     log?.info?.("STAGE_TRACE", `${traceId} ${label} t=${elapsed}ms${suffix}`);
   };
   let tokensCompressed: number | null = null;
+  let emergencyFallbackServed = false;
   body = injectSystemPrompt(body);
   let effectiveServiceTier: "standard" | "priority" = "standard";
   const resolveEffectiveServiceTier = (requestBody?: unknown): "standard" | "priority" => {
@@ -2732,7 +2736,8 @@ export async function handleChatCore({
   let currentAttempt = executionPlan.attempts[0];
   let decision = currentAttempt.decision;
   let executor = currentAttempt.executor;
-  translatedBody.model = currentAttempt.upstreamModel;
+  const finalModelToUpstream = currentAttempt.upstreamModel;
+  translatedBody.model = finalModelToUpstream;
 
   // #1789: Prevent output_config.effort from overriding effort encoded in model name (Codex)
   if (provider === "codex" || provider?.startsWith("codex")) {
@@ -2837,7 +2842,7 @@ export async function handleChatCore({
   const dedupHash = dedupEnabled ? computeRequestHash(dedupRequestBody) : null;
 
   const executeProviderRequest = async (
-    attempt: PlannedExecutionAttempt = currentAttempt,
+    attempt: PlannedExecutionAttempt<ExecutorLike> = currentAttempt,
     allowDedup = false
   ) => {
     const modelToCall = attempt.model;
@@ -2969,7 +2974,7 @@ export async function handleChatCore({
 
             while (attempts < maxAttempts) {
               trace("pre_executor", { attempt: attempts });
-              const res = await executor.execute({
+              const res = await activeExecutor.execute({
                 model: modelToCall,
                 body: bodyToSend,
                 stream: upstreamStream,
@@ -3417,7 +3422,7 @@ export async function handleChatCore({
           const quotaCooldownMs = retryAfterMs || COOLDOWN_MS.rateLimit;
           const accountSemaphoreKey = resolveAccountSemaphoreKey({
             provider,
-            model: currentModel,
+            model,
             connectionId,
             credentials,
           });
@@ -3700,6 +3705,7 @@ export async function handleChatCore({
               signal: streamController.signal,
               log,
               extendedContext,
+              upstreamExtraHeaders: null,
             });
             if (fbResult.response.ok) {
               provider = fbDecision.provider;
@@ -4204,11 +4210,13 @@ export async function handleChatCore({
     await onRequestSuccess();
   }
 
+  const upstreamHeaderEntries = Array.from(
+    providerResponse.headers.entries()
+  ) as Array<[string, string]>;
+
   const responseHeaders: Record<string, string> = {
     ...Object.fromEntries(
-      Array.from(providerResponse.headers.entries()).filter(
-        ([k]) => k.toLowerCase() !== "content-type"
-      )
+      upstreamHeaderEntries.filter(([k]) => k.toLowerCase() !== "content-type")
     ),
     "Content-Type": "text/event-stream",
     "Cache-Control": "no-cache, no-transform",

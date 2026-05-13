@@ -1,15 +1,19 @@
-import type { BaseExecutor } from "@omniroute/open-sse/executors";
 import type { RouteDecision } from "./types";
 
 export interface ExecutorLike {
-  execute(input: unknown): Promise<unknown> | unknown;
+  execute(input: unknown): Promise<{
+    response: Response;
+    url?: string;
+    headers?: Headers | Record<string, string>;
+    transformedBody?: unknown;
+  }>;
   refreshCredentials?: (...args: unknown[]) => Promise<unknown> | unknown;
 }
 
 export interface ExecutorFactory {
-  getLocalExecutor(provider: string): BaseExecutor;
-  getCloudExecutor(provider: string): BaseExecutor;
-  getHybridExecutor(provider: string): BaseExecutor;
+  getLocalExecutor(provider: string): ExecutorLike;
+  getCloudExecutor(provider: string): ExecutorLike;
+  getHybridExecutor(provider: string): ExecutorLike;
 }
 
 export class ExecutionAdapter {

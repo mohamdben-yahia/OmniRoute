@@ -297,7 +297,9 @@ async function fetchLiveProviderLimitsWithOptions(
   connection: ProviderConnectionLike;
   usage: JsonRecord;
 }> {
-  let connection = (await getProviderConnectionById(connectionId)) as ProviderConnectionLike | null;
+  let connection = (await getProviderConnectionById(connectionId)) as unknown as
+    | ProviderConnectionLike
+    | null;
   if (!connection) {
     throw withStatus(new Error("Connection not found"), 404);
   }
@@ -342,17 +344,22 @@ async function fetchLiveProviderLimitsWithOptions(
 
   try {
     result = await fetchUsageWithContext(proxyConfig);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const networkError = error as {
+      message?: string;
+      code?: string;
+      cause?: { code?: string };
+    };
     const isThrownNetworkError =
-      error?.message === "fetch failed" ||
-      error?.code === "PROXY_UNREACHABLE" ||
-      error?.code === "UND_ERR_CONNECT_TIMEOUT" ||
-      error?.cause?.code === "ECONNREFUSED";
+      networkError?.message === "fetch failed" ||
+      networkError?.code === "PROXY_UNREACHABLE" ||
+      networkError?.code === "UND_ERR_CONNECT_TIMEOUT" ||
+      networkError?.cause?.code === "ECONNREFUSED";
 
     if (proxyConfig && isThrownNetworkError) {
       console.warn(
         `[ProviderLimits] Proxy fetch threw for ${connectionId}, retrying without proxy:`,
-        error?.message
+        networkError?.message
       );
       result = await fetchUsageWithContext(null);
     } else {
@@ -434,9 +441,9 @@ export async function syncAllProviderLimits(
   errors: Record<string, string>;
 }> {
   const { source = "manual", concurrency = 5 } = options;
-  const connections = (
-    (await getProviderConnections({ isActive: true })) as ProviderConnectionLike[]
-  ).filter(isSupportedUsageConnection);
+  const connections = ((await getProviderConnections({ isActive: true })) as unknown as ProviderConnectionLike[]).filter(
+    isSupportedUsageConnection
+  );
   const cacheEntries: Array<{ connectionId: string; entry: ProviderLimitsCacheEntry }> = [];
   const caches: Record<string, ProviderLimitsCacheEntry> = {};
   const errors: Record<string, string> = {};
