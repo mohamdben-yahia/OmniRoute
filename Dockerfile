@@ -9,6 +9,8 @@ COPY package*.json ./
 COPY scripts/postinstall.mjs ./scripts/postinstall.mjs
 COPY scripts/postinstallSupport.mjs ./scripts/postinstallSupport.mjs
 COPY scripts/native-binary-compat.mjs ./scripts/native-binary-compat.mjs
+COPY scripts/sync-env.mjs ./scripts/sync-env.mjs
+COPY bin/nodeRuntimeSupport.mjs ./bin/nodeRuntimeSupport.mjs
 ENV NPM_CONFIG_LEGACY_PEER_DEPS=true
 RUN if [ -f package-lock.json ]; then \
     npm ci --no-audit --no-fund --legacy-peer-deps; \
