@@ -5,6 +5,8 @@
 import { getDbInstance } from "./core";
 import { backupDbFile } from "./backup";
 import { invalidateDbCache } from "./readCache";
+import { getProxyRegistryGeneration, resolveProxyForConnectionFromRegistry } from "./proxies";
+import { getComboModelProvider as getComboEntryProvider } from "@/lib/combos/steps";
 import { requestBodyLimitMbFromEnv } from "@/shared/constants/bodySize";
 
 type JsonRecord = Record<string, unknown>;
@@ -13,6 +15,42 @@ type PricingByProvider = Record<string, PricingModels>;
 export type PricingSource = "default" | "litellm" | "modelsDev" | "user";
 export type PricingSourceMap = Record<string, Record<string, PricingSource>>;
 type ProxyValue = JsonRecord | string | null;
+type ProxyResolutionResult = {
+  proxy: ProxyValue;
+  level: string;
+  levelId: string | null;
+  source?: string;
+};
+type ProxyResolutionCacheEntry = {
+  generation: number;
+  registryGeneration: number;
+  result: ProxyResolutionResult;
+};
+
+const PROXY_RESOLUTION_CACHE_MAX_ENTRIES = 100;
+
+let proxyConfigGeneration = 0;
+const proxyResolutionCache = new Map<string, ProxyResolutionCacheEntry>();
+
+function bumpProxyConfigGeneration() {
+  proxyConfigGeneration++;
+  proxyResolutionCache.clear();
+}
+
+function cacheProxyResolution(
+  connectionId: string,
+  generation: number,
+  registryGeneration: number,
+  result: ProxyResolutionResult
+) {
+  if (generation !== proxyConfigGeneration) return;
+  if (registryGeneration !== getProxyRegistryGeneration()) return;
+  if (proxyResolutionCache.size >= PROXY_RESOLUTION_CACHE_MAX_ENTRIES) {
+    const oldestKey = proxyResolutionCache.keys().next().value;
+    if (oldestKey) proxyResolutionCache.delete(oldestKey);
+  }
+  proxyResolutionCache.set(connectionId, { generation, registryGeneration, result });
+}
 type ProxyMap = Record<string, ProxyValue>;
 
 interface ProxyConfig {
@@ -58,6 +96,7 @@ export async function getSettings() {
     hideEndpointTailscaleFunnel: false,
     hideEndpointNgrokTunnel: false,
     comboConfigMode: "guided",
+    codexServiceTier: { enabled: false },
     alwaysPreserveClientCache: "auto",
     idempotencyWindowMs: 5000,
     wsAuth: false,
@@ -494,6 +533,7 @@ export async function setProxyForLevel(level: string, id: string | null, proxy: 
   }
 
   backupDbFile("pre-write");
+  bumpProxyConfigGeneration();
   return config;
 }
 
@@ -502,16 +542,35 @@ export async function deleteProxyForLevel(level: string, id: string | null) {
 }
 
 export async function resolveProxyForConnection(connectionId: string) {
-  const { resolveProxyForConnectionFromRegistry } = await import("./proxies");
+  const startGeneration = proxyConfigGeneration;
+  const startRegistryGeneration = getProxyRegistryGeneration();
+  const cached = proxyResolutionCache.get(connectionId);
+  if (
+    cached &&
+    cached.generation === startGeneration &&
+    cached.registryGeneration === startRegistryGeneration
+  ) {
+    return cached.result;
+  }
   const registryResolved = await resolveProxyForConnectionFromRegistry(connectionId);
   if (registryResolved?.proxy) {
+    if (registryResolved.level === "account") {
+      cacheProxyResolution(
+        connectionId,
+        startGeneration,
+        startRegistryGeneration,
+        registryResolved
+      );
+    }
     return registryResolved;
   }
 
   const config = await getProxyConfig();
 
   if (connectionId && config.keys?.[connectionId]) {
-    return { proxy: config.keys[connectionId], level: "key", levelId: connectionId };
+    const result = { proxy: config.keys[connectionId], level: "key", levelId: connectionId };
+    cacheProxyResolution(connectionId, startGeneration, startRegistryGeneration, result);
+    return result;
   }
 
   const db = getDbInstance();
@@ -563,7 +622,6 @@ export async function resolveProxyForConnection(connectionId: string) {
   if (config.global) {
     return { proxy: config.global, level: "global", levelId: null };
   }
-
   return { proxy: null, level: "direct", levelId: null };
 }
 
@@ -600,6 +658,7 @@ export async function setProxyConfig(config: Record<string, unknown>) {
   tx();
 
   backupDbFile("pre-write");
+  bumpProxyConfigGeneration();
   return current;
 }
 

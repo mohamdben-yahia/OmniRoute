@@ -2,6 +2,38 @@
 
 ## [Unreleased]
 
+## [3.8.0] — 2026-05-06
+
+### ✨ New Features
+
+- **feat(antigravity):** integrate Antigravity provider with dynamic `maxOutputTokens` calculation (bumping to `thinkingBudget + 1`) and standard Cloud Code envelope payload sanitization (#2055, #2063)
+- **feat(gemini-cli):** add custom projectId support for Gemini CLI transport (UI, DB, executor) (#1991)
+
+### 🐛 Bug Fixes
+
+- **fix(providers):** strip OpenAI-specific fields in Kiro translator to prevent 400 errors (#2037)
+- **fix(ui):** resolve text contrast issues for zero-config warning banner in light mode (#2050)
+- **fix(core):** inject global system prompt correctly into downstream chat completions pipeline (#2080)
+- **fix(routing):** add missing v1beta rewrites to next.config to resolve 404 on Gemini models endpoint (#2102)
+- **fix(cache):** optimize cache_control preservation logic and explicitly align tool schema with upstream Claude Code expectations
+- **fix(db):** preserve legacy SQLite database path on Windows to prevent data loss (#1973)
+- **fix(settings):** resolve model alias persistence double stringification preventing UI updates (#2018)
+- **fix(routing):** dynamically filter bare model auto-resolution by active provider connections to prevent dead-routing (#2029)
+- **fix(embeddings):** add Google Gemini embeddings compatibility via OpenAI-compatible endpoint mapping (#2006)
+- **fix:** remove Anthropic-Beta header from non-Anthropic providers to fix identity contamination (#1989)
+- **fix(cli):** resolve .env loading failure for global npm installations
+
+### 🔒 Security
+
+- **fix(security):** remediate regex validation backtracking path in core compression cleanup (#1990)
+- **fix(core):** harden input handling and stabilization for prompt compression edge cases
+
+### 🧹 Chores & Maintenance
+
+- **chore(providers):** prune redundant local provider icon assets in favor of `@lobehub/icons` web fonts (#1992)
+- **ci:** skip SonarCloud scan on main pushes to optimize CI time
+- **test:** stabilize cooldown abort coverage case in integration testing
+
 ## [3.7.9] — 2026-05-03
 
 ### ✨ New Features

@@ -312,7 +312,11 @@ export class GeminiCLIExecutor extends BaseExecutor {
 
     const envelope: Record<string, any> = {
       model: currentModel,
-      project: bodyRecord.project || credentials.projectId || "",
+      project:
+        bodyRecord.project ||
+        credentials.projectId ||
+        (credentials.providerSpecificData as Record<string, unknown>)?.projectId ||
+        "",
       user_prompt_id: bodyRecord.user_prompt_id || generateGeminiCliRequestId(),
       request: {
         ...requestRecord,
@@ -326,8 +330,9 @@ export class GeminiCLIExecutor extends BaseExecutor {
       }
     }
 
-    // Refresh the project ID via loadCodeAssist (cached for 30s).
-    if (credentials.accessToken) {
+    // Refresh the project ID via loadCodeAssist (cached for 30s) only when project not provided
+    // and credentials have an access token
+    if (!envelope.project && credentials.accessToken) {
       const freshProject = await this.refreshProject(credentials.accessToken, currentModel);
       if (freshProject) {
         envelope.project = freshProject;

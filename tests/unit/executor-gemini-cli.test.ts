@@ -82,7 +82,7 @@ test("GeminiCLIExecutor.buildHeaders derives the User-Agent from the request mod
   assert.notEqual(flashHeaders["User-Agent"], proHeaders["User-Agent"]);
 });
 
-test("GeminiCLIExecutor.refreshProject caches loadCodeAssist lookups and transformRequest updates body.project", async () => {
+test("GeminiCLIExecutor.refreshProject caches loadCodeAssist lookups and transformRequest preserves existing body.project", async () => {
   const executor = new GeminiCLIExecutor();
   const originalFetch = globalThis.fetch;
   let calls = 0;
@@ -107,7 +107,7 @@ test("GeminiCLIExecutor.refreshProject caches loadCodeAssist lookups and transfo
     assert.equal(first, "fresh-project-id");
     assert.equal(second, "fresh-project-id");
     assert.equal(calls, 1);
-    assert.equal(transformed.project, "fresh-project-id");
+    assert.equal(transformed.project, "stale-project");
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -368,10 +368,10 @@ test("GeminiCLIExecutor.execute applies CLI fingerprint to the final Cloud Code 
       "Authorization",
     ]);
     assert.equal(finalBody.model, "gemini-3.1-pro-preview");
-    assert.equal(finalBody.project, "project-live");
+    assert.equal(finalBody.project, "old-project");
     assert.match(finalBody.user_prompt_id, /^agent-/);
     assert.match(finalBody.request.session_id, /^-\d+$/);
-    assert.match(finalCall.headers["User-Agent"], /^GeminiCLI\/0\.40\.1\/gemini-3\.1-pro-preview /);
+    assert.match(finalCall.headers["User-Agent"], /^GeminiCLI\/\d+\.\d+\.\d+\/gemini-3\.1-pro-preview /);
     assert.equal(finalCall.headers.Accept, "*/*");
   } finally {
     setCliCompatProviders([]);

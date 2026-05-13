@@ -92,7 +92,7 @@ export default function LoginPage() {
       <div className="w-full max-w-lg mx-auto mb-6 animate-in fade-in slide-in-from-top-2 duration-500">
         <div className="bg-red-950/60 border-2 border-red-500/40 rounded-2xl p-6 shadow-lg shadow-red-900/20 backdrop-blur-sm">
           <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-xl bg-red-500/20 flex items-center justify-center shrink-0 mt-0.5">
+            <div className="w-12 h-12 rounded-xl bg-red-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
               <span className="material-symbols-outlined text-red-400 text-[28px]">error</span>
             </div>
             <div className="flex-1 min-w-0">
@@ -197,7 +197,7 @@ export default function LoginPage() {
               <Button
                 variant="primary"
                 className="w-full h-11 text-sm font-medium"
-                onClick={() => router.push("/dashboard/settings?tab=security")}
+                onClick={() => router.push("/dashboard/onboarding")}
               >
                 {t("configurePassword")}
               </Button>
@@ -277,7 +277,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <div className="hidden lg:flex lg:w-1/2 bg-linear-to-br from-primary/5 via-primary/3 to-transparent items-center justify-center p-12">
+  <div className="hidden lg:flex lg:w-1/2 bg-linear-to-br from-primary/5 via-primary/3 to-transparent items-center justify-center p-12">
           <div
             className={`max-w-md transition-all duration-700 delay-200 ease-out ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
           >
@@ -309,7 +309,7 @@ export default function LoginPage() {
                     key={item.icon}
                     className="flex items-start gap-4 p-4 rounded-xl bg-surface/50 border border-border"
                   >
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
                       <span className="material-symbols-outlined text-primary text-[20px]">
                         {item.icon}
                       </span>

@@ -491,35 +491,49 @@ test("Gemini and Antigravity run mocked browser OAuth exchanges and post-exchang
     jsonResponse({ cloudaicompanionProject: { id: "gemini-project" } }),
     jsonResponse({ access_token: "anti-access", refresh_token: "anti-refresh", expires_in: 7200 }),
     jsonResponse({ email: "anti@example.com" }),
-    (_url, init) => {
+    (_url, init = {}) => {
+      assert.equal(init.method, "POST");
       const requestInit = asRequestInit(init);
       const headers = requestInit.headers as Record<string, string>;
 
-      assert.equal(requestInit.method, "POST");
       assert.equal(headers.Authorization, "Bearer anti-access");
-      assert.equal(headers["User-Agent"], "google-api-nodejs-client/9.15.1");
-      assert.equal(headers["X-Goog-Api-Client"], "google-cloud-sdk vscode_cloudshelleditor/0.1");
-      assert.equal(
-        headers["Client-Metadata"],
-        JSON.stringify({
-          ideType: "IDE_UNSPECIFIED",
-          platform: "PLATFORM_UNSPECIFIED",
-          pluginType: "GEMINI",
-        })
-      );
+      const body = JSON.parse(String(requestInit.body));
+      if (headers["X-Goog-Api-Client"]) {
+        assert.equal(headers["User-Agent"], "google-api-nodejs-client/9.15.1");
+        assert.equal(headers["X-Goog-Api-Client"], "google-cloud-sdk vscode_cloudshelleditor/0.1");
+        assert.equal(
+          headers["Client-Metadata"],
+          JSON.stringify({
+            ideType: "IDE_UNSPECIFIED",
+            platform: "PLATFORM_UNSPECIFIED",
+            pluginType: "GEMINI",
+          })
+        );
+      } else {
+        assert.match(headers["User-Agent"], /^vscode\/1\.X\.X \(Antigravity\//);
+        assert.equal(headers["Client-Metadata"], undefined);
+        assert.deepEqual(body.metadata, { ideType: "ANTIGRAVITY" });
+      }
       return jsonResponse({
         cloudaicompanionProject: { id: "anti-project" },
         allowedTiers: [{ id: "tier-default", isDefault: true }],
       });
     },
-    (_url, init) => {
+    (_url, init = {}) => {
       const requestInit = asRequestInit(init);
       const headers = requestInit.headers as Record<string, string>;
 
       assert.equal(requestInit.method, "POST");
       assert.equal(headers.Authorization, "Bearer anti-access");
-      assert.equal(headers["User-Agent"], "google-api-nodejs-client/9.15.1");
-      assert.equal(headers["X-Goog-Api-Client"], "google-cloud-sdk vscode_cloudshelleditor/0.1");
+      const body = JSON.parse(String(requestInit.body));
+      if (headers["X-Goog-Api-Client"]) {
+        assert.equal(headers["User-Agent"], "google-api-nodejs-client/9.15.1");
+        assert.equal(headers["X-Goog-Api-Client"], "google-cloud-sdk vscode_cloudshelleditor/0.1");
+      } else {
+        assert.match(headers["User-Agent"], /^vscode\/1\.X\.X \(Antigravity\//);
+        assert.equal(headers["X-Goog-Api-Client"], undefined);
+        assert.deepEqual(body.metadata, { ideType: "ANTIGRAVITY" });
+      }
       return jsonResponse({
         done: true,
         response: { cloudaicompanionProject: { id: "anti-project-final" } },

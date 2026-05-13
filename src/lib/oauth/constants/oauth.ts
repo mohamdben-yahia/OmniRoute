@@ -194,12 +194,13 @@ export const ANTIGRAVITY_CONFIG = {
     "https://www.googleapis.com/auth/experimentsandconfigs",
   ],
   // Antigravity specific
-  apiEndpoint: "https://cloudcode-pa.googleapis.com",
+  apiEndpoint: "https://daily-cloudcode-pa.sandbox.googleapis.com",
   apiVersion: "v1internal",
-  loadCodeAssistEndpoint: "https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist",
-  onboardUserEndpoint: "https://cloudcode-pa.googleapis.com/v1internal:onboardUser",
+  loadCodeAssistEndpoint:
+    "https://daily-cloudcode-pa.sandbox.googleapis.com/v1internal:loadCodeAssist",
+  onboardUserEndpoint: "https://daily-cloudcode-pa.sandbox.googleapis.com/v1internal:onboardUser",
   fetchAvailableModelsEndpoint:
-    "https://cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels",
+    "https://daily-cloudcode-pa.sandbox.googleapis.com/v1internal:fetchAvailableModels",
   loadCodeAssistUserAgent: ANTIGRAVITY_LOAD_CODE_ASSIST_USER_AGENT,
   loadCodeAssistApiClient: ANTIGRAVITY_LOAD_CODE_ASSIST_API_CLIENT,
   loadCodeAssistClientMetadata: getAntigravityLoadCodeAssistClientMetadata(),
