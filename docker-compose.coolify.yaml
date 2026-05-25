@@ -63,6 +63,16 @@ services:
       CLIPROXYAPI_HOST: ${CLIPROXYAPI_HOST:-cliproxyapi}
       CLIPROXYAPI_PORT: ${CLIPROXYAPI_PORT:-8317}
 
+      # Redis cache / queue backend
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+
+    depends_on:
+      - redis
+      - cliproxyapi
+
     expose:
       - "${PORT:-20128}"
       - "${API_PORT:-20129}"
@@ -108,6 +118,27 @@ services:
       retries: 3
       start_period: 10s
 
+  redis:
+    container_name: redis-coolify
+    image: redis:7-alpine
+    restart: unless-stopped
+    stop_grace_period: 10s
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    expose:
+      - "6379"
+    volumes:
+      - redis-coolify-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
 volumes:
   omniroute-coolify-data:
     name: omniroute-coolify-data
@@ -115,3 +146,5 @@ volumes:
     name: cliproxyapi-coolify-logs
   cliproxyapi-coolify-data:
     name: cliproxyapi-coolify-data
+  redis-coolify-data:
+    name: redis-coolify-data
