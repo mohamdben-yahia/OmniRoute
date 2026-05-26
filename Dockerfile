@@ -17,7 +17,7 @@ RUN if [ -f package-lock.json ]; then \
     fi
 
 COPY . ./
-RUN mkdir -p /app/data && npm run build -- --webpack
+RUN mkdir -p /app/data && NODE_OPTIONS=--max-old-space-size=4096 npm run build -- --webpack
 
 FROM node:26.2.0-trixie-slim AS runner-base
 WORKDIR /app
@@ -31,7 +31,7 @@ LABEL org.opencontainers.image.title="omniroute" \
 ENV NODE_ENV=production
 ENV PORT=20128
 ENV HOSTNAME=0.0.0.0
-ENV NODE_OPTIONS="--max-old-space-size=256"
+ENV NODE_OPTIONS="--max-old-space-size=1024"
 
 # Data directory inside Docker — must match the volume mount in docker-compose.yml
 ENV DATA_DIR=/app/data
