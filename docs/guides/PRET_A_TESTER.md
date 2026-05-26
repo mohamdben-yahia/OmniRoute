@@ -1,3 +1,8 @@
+---
+title: Prêt à Tester
+description: Guide de test rapide pour vérifier l'état du projet
+---
+
 # ✅ TOUT EST PRÊT - Testez Maintenant!
 
 **Date**: 2026-05-04  
