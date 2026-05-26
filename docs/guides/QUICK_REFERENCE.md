@@ -1,3 +1,8 @@
+---
+title: Windsurf API - Quick Reference
+description: Aide-mémoire rapide pour l'API Windsurf
+---
+
 # 🚀 WINDSURF API - AIDE-MÉMOIRE RAPIDE
 
 **Date**: 2026-05-03 23:43 UTC  

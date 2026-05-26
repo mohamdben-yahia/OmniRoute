@@ -1,3 +1,8 @@
+---
+title: Quick Start - Hidden Models Discovery
+description: Guide rapide pour découvrir les modèles cachés Windsurf
+---
+
 # Guide Rapide: Découverte de Modèles Cachés
 
 **Date**: 2026-05-04  
