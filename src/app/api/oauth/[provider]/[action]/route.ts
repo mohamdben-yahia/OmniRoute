@@ -6,6 +6,7 @@ import {
   exchangeTokens,
   requestDeviceCode,
   pollForToken,
+  resolveBrowserOAuthRedirectUri,
 } from "@/lib/oauth/providers";
 import {
   createProviderConnection,
@@ -170,7 +171,9 @@ export async function GET(
     const { searchParams } = new URL(request.url);
 
     if (action === "authorize") {
-      const redirectUri = searchParams.get("redirect_uri") || "http://localhost:8080/callback";
+      const requestedRedirectUri =
+        searchParams.get("redirect_uri") || "http://localhost:8080/callback";
+      const redirectUri = resolveBrowserOAuthRedirectUri(provider, requestedRedirectUri);
       const authData = generateAuthData(provider, redirectUri);
       if (!authData.supported) {
         return NextResponse.json({

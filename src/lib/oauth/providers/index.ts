@@ -22,6 +22,7 @@ import { github } from "./github";
 import { gitlabDuo } from "./gitlab-duo";
 import { kiro } from "./kiro";
 import { cursor } from "./cursor";
+import { trae } from "./trae";
 import { kilocode } from "./kilocode";
 import { cline } from "./cline";
 
@@ -39,6 +40,7 @@ export const PROVIDERS = {
   kiro,
   "amazon-q": kiro,
   cursor,
+  trae,
   kilocode,
   cline,
   "devin-cli": windsurf,
