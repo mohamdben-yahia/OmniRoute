@@ -218,6 +218,7 @@ export const OAUTH_PROVIDERS = {
     icon: "air",
     color: "#00C5A0",
     textIcon: "WS",
+    enabled: false,
     subscriptionRisk: true,
     riskNoticeVariant: "oauth",
     authHint:
@@ -242,6 +243,7 @@ export const OAUTH_PROVIDERS = {
     icon: "air",
     color: "#00A3FF",
     textIcon: "WS",
+    enabled: false,
     website: "https://windsurf.com",
     authHint:
       "Internal Windsurf auth has been observed in the desktop client, but third-party Windsurf OAuth is unsupported by default. This provider remains an OAuth-ready placeholder until a stable, authorized public contract exists.",

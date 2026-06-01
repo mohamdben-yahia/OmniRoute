@@ -149,29 +149,7 @@ export const QODER_CONFIG = {
   },
 };
 
-export const WINDSURF_CONFIG = {
-  enabled: WINDSURF_OAUTH_ENABLED,
-  clientId: WINDSURF_OAUTH_CLIENT_ID,
-  clientSecret: WINDSURF_OAUTH_CLIENT_SECRET,
-  authorizeUrl: WINDSURF_OAUTH_AUTHORIZE_URL,
-  tokenUrl: WINDSURF_OAUTH_TOKEN_URL,
-  redirectUri: WINDSURF_OAUTH_REDIRECT_URI,
-  authTokenUrl: WINDSURF_AUTH_TOKEN_URL,
-  registerTokenUrl: WINDSURF_REGISTER_TOKEN_URL,
-  registerApiServerUrl: WINDSURF_REGISTER_API_SERVER_URL,
-  defaultApiServerUrl: WINDSURF_DEFAULT_API_SERVER_URL,
-  scopes: WINDSURF_OAUTH_SCOPES.split(/\s+/)
-    .map((scope) => scope.trim())
-    .filter(Boolean),
-  codeChallengeMethod: "S256",
-  supportLevel: "oauth-ready-placeholder",
-  observedInternalAuth: true,
-  thirdPartyOAuthSupported: false,
-  disabledMessage:
-    "Windsurf internal auth has been observed in the desktop client, but third-party Windsurf OAuth is unsupported by default. Configure WINDSURF_OAUTH_* only after you have a stable, authorized public OAuth contract.",
-  manualTokenMessage:
-    "Use the Windsurf auth token page, then paste the token into OmniRoute for experimental exchange into a Windsurf API key.",
-};
+
 
 // Kimi Coding OAuth Configuration (Device Code Flow)
 export const KIMI_CODING_CONFIG = {
