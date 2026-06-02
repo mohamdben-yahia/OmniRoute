@@ -43,11 +43,11 @@ RUN --mount=type=cache,target=/root/.npm \
 ARG OMNIROUTE_USE_TURBOPACK=0
 ENV OMNIROUTE_USE_TURBOPACK=${OMNIROUTE_USE_TURBOPACK}
 
-COPY . ./
-RUN --mount=type=cache,target=/app/.next/cache \
-  mkdir -p /app/data && npm run build
+# Next.js webpack builds can exceed the default V8 heap limit in constrained CI/CD
+# builders. Raise the Node heap for the build step, while still allowing an override.
+ARG OMNIROUTE_BUILD_MAX_OLD_SPACE_SIZE=4096
+ENV NODE_OPTIONS="--max-old-space-size=${OMNIROUTE_BUILD_MAX_OLD_SPACE_SIZE}"
 
-# ── Runner base ────────────────────────────────────────────────────────────
 FROM base AS runner-base
 
 LABEL org.opencontainers.image.title="omniroute" \
