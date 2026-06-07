@@ -8,7 +8,10 @@ import { MAX_REQUEST_BODY_LIMIT_MB, MIN_REQUEST_BODY_LIMIT_MB } from "@/shared/c
 import { COMBO_CONFIG_MODES } from "@/shared/constants/comboConfigMode";
 import { providerAllowsOptionalApiKey } from "@/shared/constants/providers";
 import { HIDEABLE_SIDEBAR_ITEM_IDS } from "@/shared/constants/sidebarVisibility";
-import { isForbiddenUpstreamHeaderName } from "@/shared/constants/upstreamHeaders";
+import {
+  isForbiddenUpstreamHeaderName,
+  isForbiddenCustomHeaderName,
+} from "@/shared/constants/upstreamHeaders";
 import { MAX_TIMER_TIMEOUT_MS } from "@/shared/utils/runtimeTimeouts";
 
 function isHttpUrl(value: string): boolean {
@@ -1048,6 +1051,11 @@ export const providerModelMutationSchema = z.object({
       ])
     )
     .default(["chat"]),
+  // #2905: optional per-model wire format override for custom models (e.g. a
+  // custom opencode-go model that must use the Anthropic Messages shape).
+  targetFormat: z
+    .enum(["openai", "openai-responses", "claude", "gemini", "gemini-cli", "antigravity"])
+    .optional(),
   normalizeToolCallId: z.boolean().optional(),
   preserveOpenAIDeveloperRole: z.boolean().nullable().optional(),
   upstreamHeaders: upstreamHeadersRecordSchema.nullable().optional(),
@@ -1641,6 +1649,22 @@ export const oauthImportTokenSchema = z.object({
   connectionId: z.string().optional(),
 });
 
+/**
+ * Persist tokens obtained out-of-band by the browser-driven Codex device flow.
+ * The browser performs the full device authorization + token exchange against
+ * auth.openai.com (the server cannot — its datacenter IP is blocked by Cloudflare),
+ * then ships the final tokens here for mapping + persistence. Token fields use the
+ * snake_case shape returned by the OAuth token endpoint (consumed directly by
+ * each provider's mapTokens).
+ */
+export const oauthDeviceCompleteSchema = z.object({
+  access_token: z.string().trim().min(1, "access_token is required"),
+  refresh_token: z.string().trim().optional(),
+  id_token: z.string().trim().optional(),
+  expires_in: z.number().int().positive().optional(),
+  connectionId: z.string().optional(),
+});
+
 export const cursorImportSchema = z.object({
   accessToken: z.string().trim().min(1, "Access token is required"),
   machineId: z.string().trim().optional(),
@@ -1866,6 +1890,8 @@ export const updateKeyPermissionsSchema = z
       .optional(),
     scopes: z.array(z.string().trim().min(1).max(64)).max(32).optional(),
     allowedEndpoints: z.array(z.string().trim().min(1).max(64)).max(20).optional(),
+    streamDefaultMode: z.enum(["legacy", "json"]).optional(),
+    disableNonPublicModels: z.boolean().optional(),
   })
   .superRefine((value, ctx) => {
     if (
@@ -1883,7 +1909,8 @@ export const updateKeyPermissionsSchema = z
       value.accessSchedule === undefined &&
       value.rateLimits === undefined &&
       value.scopes === undefined &&
-      value.allowedEndpoints === undefined
+      value.allowedEndpoints === undefined &&
+      value.streamDefaultMode === undefined
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -1892,6 +1919,21 @@ export const updateKeyPermissionsSchema = z
       });
     }
   });
+
+// Reuse the canonical upstream-headers record schema (control-char / whitespace
+// / ":" / 128-name / 4096-value / max-16 guards) so per-provider custom headers
+// inherit the same hardening as `modelCompat.upstreamHeaders` — then additionally
+// reject auth header names (the credential layer owns those; the executor drops
+// them at send time, so reject up front for an actionable error instead of a
+// silent no-op). Single denylist source: isForbiddenCustomHeaderName.
+const customHeadersSchema = upstreamHeadersRecordSchema
+  .refine((rec) => !Object.keys(rec).some((k) => isForbiddenCustomHeaderName(k)), {
+    message:
+      "Custom headers cannot include hop-by-hop, framing, or auth headers " +
+      "(authorization / x-api-key / x-goog-api-key / api-key)",
+  })
+  .nullable()
+  .optional();
 
 export const createProviderNodeSchema = z
   .object({
@@ -1912,6 +1954,7 @@ export const createProviderNodeSchema = z
     compatMode: z.enum(["cc"]).optional(),
     chatPath: z.string().trim().startsWith("/").max(500).optional().or(z.literal("")),
     modelsPath: z.string().trim().startsWith("/").max(500).optional().or(z.literal("")),
+    customHeaders: customHeadersSchema,
   })
   .superRefine((value, ctx) => {
     const nodeType = value.type || "openai-compatible";
@@ -1940,6 +1983,7 @@ export const updateProviderNodeSchema = z.object({
   baseUrl: z.string().trim().min(1, "Base URL is required"),
   chatPath: z.string().trim().startsWith("/").max(500).optional().or(z.literal("")),
   modelsPath: z.string().trim().startsWith("/").max(500).optional().or(z.literal("")),
+  customHeaders: customHeadersSchema,
 });
 
 export const providerNodeValidateSchema = z.object({
@@ -1988,6 +2032,22 @@ export const updateProviderConnectionSchema = z
       ])
       .optional(),
     projectId: z.union([z.string(), z.null()]).optional(),
+    // Per-connection rate limit overrides — overrides the global RequestQueueSettings
+    // for this connection. Set to null to clear all overrides.
+    rateLimitOverrides: z
+      .union([
+        z.null(),
+        z.object({
+          rpm: z.coerce.number().int().min(0).max(1_000_000).optional(),
+          tpm: z.coerce.number().int().min(0).max(100_000_000).optional(),
+          tpd: z.coerce.number().int().min(0).max(10_000_000_000).optional(),
+          minTime: z.coerce.number().int().min(0).max(60_000).optional(),
+          maxConcurrent: z.coerce.number().int().min(0).max(10_000).optional(),
+        }),
+      ])
+      .optional(),
+    proxyEnabled: z.boolean().optional(),
+    perKeyProxyEnabled: z.boolean().optional(),
     // Partial patch of per-connection provider-specific settings (e.g. quota toggles)
     providerSpecificData: z
       .record(z.string(), z.unknown())
@@ -2023,9 +2083,12 @@ export const providersBatchTestSchema = z
       "upstream-proxy",
       "cloud-agent",
       "ide",
+      "selected",
     ]),
     // Frontend may send null when mode != 'provider' — accept and treat as missing
     providerId: z.string().trim().min(1).nullable().optional(),
+    // Explicit connection IDs to test — required when mode=selected
+    connectionIds: z.array(z.string().trim().min(1)).max(100).nullable().optional(),
   })
   .superRefine((value, ctx) => {
     // Treat null same as undefined
@@ -2037,7 +2100,21 @@ export const providersBatchTestSchema = z
         path: ["providerId"],
       });
     }
+    const ids = value.connectionIds ?? null;
+    if (value.mode === "selected" && (!ids || ids.length === 0)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "connectionIds is required when mode=selected",
+        path: ["connectionIds"],
+      });
+    }
   });
+
+// PATCH /api/providers — bulk activate/deactivate selected connections
+export const batchUpdateProviderConnectionsSchema = z.object({
+  ids: z.array(z.string().trim().min(1)).min(1).max(100),
+  isActive: z.boolean(),
+});
 
 export const validateProviderApiKeySchema = z
   .object({

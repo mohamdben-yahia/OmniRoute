@@ -38,12 +38,73 @@ export const NOAUTH_PROVIDERS = {
     website: "https://opencode.ai",
     noAuth: true,
     hasFree: true,
+    serviceKinds: ["llm"],
     authHint: "No API key required — uses OpenCode's public free endpoint.",
     freeNote:
       "No API key required — public OpenCode endpoint with Kimi, GLM, Qwen, MiMo, MiniMax models.",
     notice: {
       text: "OpenCode Free uses the public OpenCode endpoint (https://opencode.ai/zen/v1). No signup or API key needed. Rate limits apply.",
     },
+  },
+  "duckduckgo-web": {
+    id: "duckduckgo-web",
+    alias: "ddgw",
+    name: "DuckDuckGo AI Chat",
+    icon: "auto_awesome",
+    color: "#DE5833",
+    textIcon: "DDG",
+    website: "https://duckduckgo.com/duckchat",
+    noAuth: true,
+    hasFree: true,
+    serviceKinds: ["llm"],
+    freeNote: "Free — anonymous access to multiple AI models via DuckDuckGo.",
+    authHint: "No credentials required — DuckDuckGo AI Chat is anonymous and free.",
+  },
+  theoldllm: {
+    id: "theoldllm",
+    alias: "tllm",
+    name: "The Old LLM (Free)",
+    icon: "auto_awesome",
+    color: "#8B5CF6",
+    textIcon: "TL",
+    website: "https://theoldllm.vercel.app",
+    noAuth: true,
+    hasFree: true,
+    serviceKinds: ["llm"],
+    freeNote:
+      "Free — GPT-5.4, Claude 4.6 Opus/Sonnet/Haiku, + more. No API key — tokens auto-generated via browser.",
+    authHint:
+      "No credentials required. The executor auto-generates access tokens via an embedded Playwright browser instance.",
+  },
+  chipotle: {
+    id: "chipotle",
+    alias: "pepper",
+    name: "Chipotle Pepper AI (Free)",
+    icon: "restaurant",
+    color: "#C41230",
+    textIcon: "🌯",
+    website: "https://amelia.chipotle.com",
+    noAuth: true,
+    hasFree: true,
+    serviceKinds: ["llm"],
+    freeNote:
+      "Free — Chipotle's Pepper AI (IPsoft Amelia). Anonymous sessions, no API key. Rate-limited.",
+    authHint:
+      "No credentials required. Uses Chipotle's public support chatbot via reverse-engineered SockJS/STOMP protocol.",
+  },
+  "veoaifree-web": {
+    id: "veoaifree-web",
+    alias: "veo-free",
+    name: "Veo AI Free",
+    icon: "videocam",
+    color: "#8B5CF6",
+    textIcon: "VF",
+    website: "https://veoaifree.com",
+    noAuth: true,
+    hasFree: true,
+    serviceKinds: ["video"],
+    freeNote: "Free video generation — VEO 3.1, Seedance. 6 requests/hour.",
+    authHint: "No auth required. Rate limited to 6 requests/hour per IP.",
   },
 };
 
@@ -112,6 +173,8 @@ export const OAUTH_PROVIDERS = {
     subscriptionRisk: true,
     riskNoticeVariant: "deprecated",
     hasFree: true,
+    freeNote:
+      "Free tier: 50 credits/month (~25K–100K tokens). ⚠️ Kiro ToS prohibits third-party proxy/harness use.",
   },
   "amazon-q": {
     id: "amazon-q",
@@ -286,7 +349,8 @@ export const WEB_COOKIE_PROVIDERS = {
     color: "#1DA1F2",
     textIcon: "GW",
     website: "https://grok.com",
-    authHint: "Paste your sso= cookie value from grok.com",
+    authHint:
+      "Paste the full grok.com cookie line from DevTools → Application → Cookies. Include both `sso` and `sso-rw` (e.g. `sso=...; sso-rw=...`) — Grok's anti-bot rejects `sso` on its own.",
     subscriptionRisk: true,
     riskNoticeVariant: "webCookie",
   },
@@ -378,18 +442,6 @@ export const WEB_COOKIE_PROVIDERS = {
     subscriptionRisk: true,
     riskNoticeVariant: "webCookie",
   },
-  "veoaifree-web": {
-    id: "veoaifree-web",
-    alias: "veo-free",
-    name: "Veo AI Free",
-    icon: "videocam",
-    color: "#8B5CF6",
-    textIcon: "VF",
-    website: "https://veoaifree.com",
-    hasFree: true,
-    freeNote: "Free video generation — VEO 3.1, Seedance. 6 requests/hour.",
-    authHint: "No auth required. Rate limited to 6 requests/hour per IP.",
-  },
   "t3-web": {
     id: "t3-web",
     alias: "t3chat",
@@ -431,21 +483,10 @@ export const WEB_COOKIE_PROVIDERS = {
     authHint:
       "Paste your __client cookie value from .clerk.agent.adapta.one (DevTools → Application → Cookies)",
   },
-  "duckduckgo-web": {
-    id: "duckduckgo-web",
-    alias: "ddgw",
-    name: "DuckDuckGo AI Chat",
-    icon: "auto_awesome",
-    color: "#DE5833",
-    textIcon: "DDG",
-    website: "https://duckduckgo.com/duckchat",
-    hasFree: true,
-    freeNote: "Free — anonymous access to multiple AI models via DuckDuckGo.",
-    authHint: "No credentials required — DuckDuckGo AI Chat is anonymous and free.",
-  },
   huggingchat: {
     id: "huggingchat",
-    alias: "hc",
+    // "hc" belongs to the hackclub provider; huggingchat uses its own id as alias.
+    alias: "huggingchat",
     name: "HuggingChat (Free)",
     icon: "auto_awesome",
     color: "#FFD21E",
@@ -507,7 +548,8 @@ export const WEB_COOKIE_PROVIDERS = {
   },
   "kimi-web": {
     id: "kimi-web",
-    alias: "kimi",
+    // Primary "kimi" provider keeps the short alias; web variant uses its own id.
+    alias: "kimi-web",
     name: "Kimi Web (Moonshot AI)",
     icon: "auto_awesome",
     color: "#2563EB",
@@ -528,6 +570,21 @@ export const WEB_COOKIE_PROVIDERS = {
     authHint: "Paste your session cookie from doubao.com (DevTools → Application → Cookies)",
     subscriptionRisk: true,
     riskNoticeVariant: "webCookie",
+  },
+  "qwen-web": {
+    id: "qwen-web",
+    // Primary "qwen" provider keeps the short alias; web variant uses its own id.
+    alias: "qwen-web",
+    name: "Qwen Web (Free)",
+    icon: "auto_awesome",
+    color: "#10B981",
+    textIcon: "QW",
+    website: "https://chat.qwen.ai",
+    hasFree: true,
+    freeNote: "Free — Qwen models via chat.qwen.ai with login token. No subscription required.",
+    authHint:
+      "Open chat.qwen.ai, log in, then open DevTools → Application → Local Storage → " +
+      'copy the "token" value (or use tongyi_sso_ticket cookie as Bearer token).',
   },
 };
 
@@ -555,7 +612,7 @@ export const APIKEY_PROVIDERS = {
     textIcon: "CC",
     website: "https://commandcode.ai/",
     authHint:
-      "Use a Command Code API key. Requests are sent to Command Code's /alpha/generate endpoint.",
+      "Use a Command Code API key. Requests are sent to Command Code's /provider/v1/chat/completions endpoint.",
     apiHint: "Create or copy an API key from Command Code, then paste it here as a Bearer token.",
   },
   openrouter: {
@@ -583,31 +640,6 @@ export const APIKEY_PROVIDERS = {
       "55 free tier models including Grok-3, Claude 3.7, Qwen3, Kimi-K2, Gemini 2.5 Flash, DeepSeek-V3",
     apiHint:
       "Get your API key from https://panel.api.airforce — OpenAI-compatible endpoint at https://api.airforce/v1",
-    capabilities: { embeddings: false },
-  },
-  astraflow: {
-    id: "astraflow",
-    alias: "astraflow",
-    name: "Astraflow (UCloud Global)",
-    icon: "cloud",
-    color: "#0052D9",
-    textIcon: "AF",
-    passthroughModels: true,
-    website: "https://astraflow.ucloud-global.com",
-    apiHint:
-      "Astraflow by UCloud — OpenAI-compatible platform supporting 200+ models (global endpoint). Get your API key at https://astraflow.ucloud-global.com",
-  },
-  "astraflow-cn": {
-    id: "astraflow-cn",
-    alias: "astraflow-cn",
-    name: "Astraflow (UCloud China)",
-    icon: "cloud",
-    color: "#0052D9",
-    textIcon: "AFC",
-    passthroughModels: true,
-    website: "https://astraflow.ucloud.cn",
-    apiHint:
-      "Astraflow by UCloud — OpenAI-compatible platform supporting 200+ models (China endpoint). Get your API key at https://astraflow.ucloud.cn",
   },
   qianfan: {
     id: "qianfan",
@@ -920,44 +952,6 @@ export const APIKEY_PROVIDERS = {
     apiHint:
       "Get free API key at https://bazaarlink.ai — use model 'auto:free' for zero-cost inference. OpenAI-compatible.",
   },
-  completions: {
-    id: "completions",
-    alias: "cpl",
-    name: "Completions.me",
-    icon: "bolt",
-    color: "#F59E0B",
-    textIcon: "CP",
-    website: "https://completions.me",
-    hasFree: true,
-    freeNote: "Free unlimited access to Claude, GPT, Gemini — no credit card, no rate limits",
-    apiHint: "Sign up at https://completions.me for free API key. OpenAI-compatible endpoint.",
-  },
-  enally: {
-    id: "enally",
-    alias: "enly",
-    name: "Enally AI",
-    icon: "school",
-    color: "#8B5CF6",
-    textIcon: "EN",
-    website: "https://ai.enally.in",
-    hasFree: true,
-    freeNote: "Free for students and developers — no credit card, OTP verification",
-    apiHint:
-      "Get free API key at https://ai.enally.in/api — requires email and domain whitelisting.",
-  },
-  freetheai: {
-    id: "freetheai",
-    alias: "fta",
-    name: "FreeTheAi",
-    icon: "lock_open",
-    color: "#10B981",
-    textIcon: "FT",
-    website: "https://freetheai.xyz",
-    hasFree: true,
-    freeNote: "Community-run — free forever, no paid tiers, no credit card",
-    apiHint:
-      "Get free API key via Discord: https://freetheai.xyz — 16,000+ models, OpenAI-compatible.",
-  },
   xai: {
     id: "xai",
     alias: "xai",
@@ -1019,7 +1013,7 @@ export const APIKEY_PROVIDERS = {
     textIcon: "CB",
     website: "https://inference.cerebras.ai",
     hasFree: true,
-    freeNote: "Free: 1M tokens/day, 60K TPM — world's fastest inference",
+    freeNote: "Free Trial: 1M tokens/day, 30K TPM, 5 RPM — no credit card.",
   },
   cohere: {
     id: "cohere",
@@ -1075,15 +1069,6 @@ export const APIKEY_PROVIDERS = {
     website: "https://hyperbolic.xyz",
     hasFree: true,
     freeNote: "$1-5 trial credits on signup for serverless inference",
-  },
-  nanobanana: {
-    id: "nanobanana",
-    alias: "nb",
-    name: "NanoBanana",
-    icon: "image",
-    color: "#FFD700",
-    textIcon: "NB",
-    website: "https://nanobananaapi.ai",
   },
   kie: {
     id: "kie",
@@ -1173,6 +1158,7 @@ export const APIKEY_PROVIDERS = {
     icon: "opencode",
     color: "#6366f1",
     website: "https://opencode.ai/zen",
+    anonymousFallback: true,
   },
   "opencode-go": {
     id: "opencode-go",
@@ -1181,6 +1167,7 @@ export const APIKEY_PROVIDERS = {
     icon: "opencode",
     color: "#6366f1",
     website: "https://opencode.ai/go",
+    anonymousFallback: true,
   },
   alibaba: {
     id: "alibaba",
@@ -1212,7 +1199,7 @@ export const APIKEY_PROVIDERS = {
     website: "https://longcat.chat/platform/docs",
     hasFree: true,
     freeNote:
-      "50M tokens/day (Flash-Lite) + 500K/day (Chat/Thinking) — 100% free while public beta",
+      "Free: 5M tokens/day on LongCat-2.0-Preview (Flash models retired 2026-05-29); up to 120M/day via feedback.",
   },
   pollinations: {
     id: "pollinations",
@@ -1223,6 +1210,7 @@ export const APIKEY_PROVIDERS = {
     textIcon: "PO",
     website: "https://pollinations.ai",
     hasFree: true,
+    anonymousFallback: true,
     freeNote:
       "No API key required for free public endpoint. Optional Spore tier: ~0.01 pollen/hour.",
   },
@@ -1252,20 +1240,6 @@ export const APIKEY_PROVIDERS = {
     freeNote: "Free forever — no signup, no credit card. OpenAI-compatible endpoints.",
     passthroughModels: true,
     authHint: "No auth required. API accepts any non-empty string as key for identification.",
-  },
-  replicate: {
-    id: "replicate",
-    alias: "rep",
-    name: "Replicate",
-    icon: "auto_awesome",
-    color: "#3B82F6",
-    textIcon: "RE",
-    website: "https://replicate.com",
-    hasFree: true,
-    freeNote:
-      "Free community models — Llama 3.1, Mixtral, DeepSeek R1. Passthrough for SDXL, Whisper, MusicGen.",
-    passthroughModels: true,
-    authHint: "Get API token at replicate.com/account/api-tokens",
   },
   hackclub: {
     id: "hackclub",
@@ -1509,17 +1483,6 @@ export const APIKEY_PROVIDERS = {
     freeNote: "No signup required - 2 req/s, 20 RPM, 100 req/hr free tier",
     apiHint:
       "Works without API key (use 'unused' as key). Get free token at token.llm7.io for higher limits.",
-  },
-  lepton: {
-    id: "lepton",
-    alias: "lepton",
-    name: "Lepton AI",
-    icon: "bolt",
-    color: "#10B981",
-    textIcon: "LP",
-    website: "https://lepton.ai",
-    hasFree: true,
-    freeNote: "Free tier available - fast inference on custom hardware",
   },
   kluster: {
     id: "kluster",
@@ -1895,19 +1858,6 @@ export const APIKEY_PROVIDERS = {
     hasFree: true,
     freeNote: "Free tier: 50 RPM, 500,000 TPM — no credit card",
   },
-  petals: {
-    id: "petals",
-    alias: "petals",
-    name: "Petals",
-    icon: "hub",
-    color: "#10B981",
-    textIcon: "PT",
-    website: "https://chat.petals.dev",
-    authHint:
-      "No API key is required for the public research endpoint. Leave the field blank, or provide a bearer token if your self-hosted Petals gateway uses auth.",
-    apiHint:
-      "Petals exposes a public HTTP API at https://chat.petals.dev/api/v1/generate and a WebSocket API at /api/v2/generate. OmniRoute targets the HTTP generate endpoint and supports self-hosted base URLs.",
-  },
   poe: {
     id: "poe",
     alias: "poe",
@@ -2196,19 +2146,6 @@ export const APIKEY_PROVIDERS = {
     passthroughModels: true,
     authHint: "Get API key from your Dify instance.",
   },
-  poolside: {
-    id: "poolside",
-    alias: "poolside",
-    name: "Poolside",
-    icon: "code",
-    color: "#3B82F6",
-    textIcon: "PS",
-    website: "https://poolside.ai",
-    hasFree: true,
-    freeNote: "Free Laguna XS.2 and Laguna M.1 coding agent models. No credit card required.",
-    passthroughModels: true,
-    authHint: "Get API key at poolside.ai",
-  },
   "arcee-ai": {
     id: "arcee-ai",
     alias: "arcee",
@@ -2261,19 +2198,6 @@ export const APIKEY_PROVIDERS = {
     freeNote: "Free Nomic Embed API. Open-source embeddings, no credit card required.",
     passthroughModels: true,
     authHint: "Get API key at atlas.nomic.ai",
-  },
-  krutrim: {
-    id: "krutrim",
-    alias: "krutrim",
-    name: "Krutrim",
-    icon: "auto_awesome",
-    color: "#F59E0B",
-    textIcon: "KR",
-    website: "https://krutrim.ai",
-    hasFree: true,
-    freeNote: "India's first AI (by Ola). Free tier available. No credit card required.",
-    passthroughModels: true,
-    authHint: "Get API key at krutrim.ai",
   },
   monsterapi: {
     id: "monsterapi",
@@ -2888,9 +2812,9 @@ export function isSelfHostedChatProvider(providerId: unknown): boolean {
 export function providerAllowsOptionalApiKey(providerId: unknown): boolean {
   return (
     providerId === "searxng-search" ||
-    providerId === "petals" ||
     providerId === "pollinations" ||
     providerId === "copilot-web" ||
+    providerId === "duckduckgo-web" ||
     providerId === "veoaifree-web" ||
     providerId === "hackclub" ||
     providerId === "huggingchat" ||
@@ -3148,6 +3072,7 @@ export const USAGE_SUPPORTED_PROVIDERS = [
   "crof",
   "nanogpt",
   "deepseek",
+  "xiaomi-mimo",
 ];
 
 // ── Zod validation at module load (Phase 7.2) ──
