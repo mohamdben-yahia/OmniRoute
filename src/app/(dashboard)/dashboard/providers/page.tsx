@@ -306,6 +306,10 @@ export default function ProvidersPage() {
       if (c.provider !== providerId) return false;
       if (authType === "free") return true;
       return c.authType === authType;
+    }).filter((c) => {
+      // For Kiro provider, mask/hide disabled connections (isActive=false)
+      if (providerId === "kiro" && c.isActive === false) return false;
+      return true;
     });
 
     // Helper: check if connection is effectively active (cooldown expired)

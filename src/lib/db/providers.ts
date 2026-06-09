@@ -13,6 +13,7 @@ import {
 import { invalidateDbCache } from "./readCache";
 import { normalizeProviderSpecificData } from "@/lib/providers/requestDefaults";
 import { bumpProxyConfigGeneration } from "./settings";
+import { AI_PROVIDERS } from "@/shared/constants/providers";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -367,6 +368,18 @@ export async function createProviderConnection(data: JsonRecord) {
   for (const field of optionalFields) {
     if (data[field] !== undefined && data[field] !== null) {
       connection[field] = data[field];
+    }
+  }
+
+  // Apply provider defaults for rateLimitProtection if not explicitly provided
+  // This must happen AFTER the optional fields loop to avoid being overwritten
+  if (connection.rateLimitProtection === undefined) {
+    const providerId = toStringOrNull(data.provider);
+    if (providerId && AI_PROVIDERS[providerId]) {
+      const providerConfig = AI_PROVIDERS[providerId];
+      if (providerConfig.rateLimitProtected === true) {
+        connection.rateLimitProtection = true;
+      }
     }
   }
   if (normalizedProviderSpecificData && Object.keys(normalizedProviderSpecificData).length > 0) {

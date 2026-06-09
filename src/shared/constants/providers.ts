@@ -175,6 +175,7 @@ export const OAUTH_PROVIDERS = {
     hasFree: true,
     freeNote:
       "Free tier: 50 credits/month (~25K–100K tokens). ⚠️ Kiro ToS prohibits third-party proxy/harness use.",
+    rateLimitProtected: true,
   },
   "amazon-q": {
     id: "amazon-q",

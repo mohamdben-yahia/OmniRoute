@@ -1506,6 +1506,7 @@ export default function ProviderDetailPage() {
   const [batchDeleting, setBatchDeleting] = useState(false);
   const [batchUpdating, setBatchUpdating] = useState<"activate" | "deactivate" | null>(null);
   const [batchRetesting, setBatchRetesting] = useState(false);
+  const [showOnlyActive, setShowOnlyActive] = useState(providerId === "kiro");
   const commandCodeAuthWindowRef = useRef<Window | null>(null);
   const commandCodeAuthTimerRef = useRef<number | null>(null);
   const pendingRiskActionRef = useRef<(() => void) | null>(null);
@@ -1756,9 +1757,13 @@ export default function ProviderDetailPage() {
       const connectionsData = await connectionsRes.json();
       const nodesData = await nodesRes.json();
       if (connectionsRes.ok) {
-        const filtered = (connectionsData.connections || []).filter(
-          (c) => c.provider === providerId
-        );
+        const filtered = (connectionsData.connections || [])
+          .filter((c) => c.provider === providerId)
+          .filter((c) => {
+            // For Kiro provider, mask/hide disabled connections based on toggle
+            if (providerId === "kiro" && showOnlyActive && c.isActive === false) return false;
+            return true;
+          });
         setConnections(filtered);
       }
       if (nodesRes.ok) {
@@ -1784,7 +1789,7 @@ export default function ProviderDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [providerId, isCompatible]);
+  }, [providerId, isCompatible, showOnlyActive]);
 
   const handleUpdateNode = async (formData) => {
     try {
@@ -4511,6 +4516,18 @@ export default function ProviderDetailPage() {
                   </span>
                   {distributingProxies ? t("distributing") : t("distributeProxies")}
                 </button>
+              )}
+              {providerId === "kiro" && (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-bg-subtle">
+                  <span className="text-xs font-medium text-text-muted">
+                    {t("showOnlyActive") || "Show Only Active"}
+                  </span>
+                  <Toggle
+                    checked={showOnlyActive}
+                    onChange={(checked) => setShowOnlyActive(checked)}
+                    size="sm"
+                  />
+                </div>
               )}
               {connections.length > 1 && (
                 <button
