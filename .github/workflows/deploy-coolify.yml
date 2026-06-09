@@ -23,23 +23,41 @@ jobs:
           
           echo "=== Triggering Coolify deployment ==="
           
-          # Trigger the webhook deployment
-          RESPONSE=$(curl -sf -X GET "${COOLIFY_WEBHOOK_URL}" \
-            -H "Content-Type: application/json" \
-            -w "\n%{http_code}" || echo "000")
-          
-          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-          BODY=$(echo "$RESPONSE" | sed '$d')
-          
-          if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
-            echo "✅ Deployment triggered successfully (HTTP $HTTP_CODE)"
-            echo "Response: $BODY"
-          else
-            echo "❌ Failed to trigger deployment (HTTP $HTTP_CODE)"
-            echo "Response: $BODY"
+          # Verify webhook URL is set
+          if [ -z "${COOLIFY_WEBHOOK_URL}" ]; then
+            echo "❌ ERROR: COOLIFY_WEBHOOK_URL secret is not set"
+            echo "Please configure it in: https://github.com/${{ github.repository }}/settings/secrets/actions"
             exit 1
           fi
           
+          # Show webhook URL (masked by GitHub) for debugging
+          echo "Webhook URL: ${COOLIFY_WEBHOOK_URL}"
+          
+          # Trigger the webhook deployment (without -f flag to capture all responses)
+          HTTP_CODE=$(curl -s -X GET "${COOLIFY_WEBHOOK_URL}" \
+            -H "Content-Type: application/json" \
+            -w "%{http_code}" \
+            -o /tmp/response.txt)
+          
+          BODY=$(cat /tmp/response.txt 2>/dev/null || echo "")
+          
+          echo "HTTP Status Code: $HTTP_CODE"
+          echo "Response Body: $BODY"
+          
+          if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
+            echo "✅ Deployment triggered successfully (HTTP $HTTP_CODE)"
+          else
+            echo "❌ Failed to trigger deployment (HTTP $HTTP_CODE)"
+            echo ""
+            echo "Common causes:"
+            echo "  - Incorrect webhook URL (check Coolify dashboard)"
+            echo "  - Wrong application UUID in the URL"
+            echo "  - Coolify instance not accessible from GitHub runners"
+            echo "  - Webhook disabled in Coolify"
+            exit 1
+          fi
+          
+          echo ""
           echo "=== Deployment triggered - Coolify will handle the build and health checks ==="
           echo "⚠️  Note: This workflow only triggers the deployment."
           echo "    Monitor deployment progress and health in your Coolify dashboard."
