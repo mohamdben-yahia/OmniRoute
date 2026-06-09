@@ -126,17 +126,23 @@ export const CREDITS_EXHAUSTED_SIGNALS = [
   "credit_balance_too_low",
   "your credit balance is too low",
   "credits exhausted",
+  "quota exhausted",
   "out of credits",
+  "no credits",
   "payment required",
   "resource has been exhausted",
   "resource_exhausted",
   "check quota",
   "free tier of the model has been exhausted",
+  "reached the limit",
+  "you have reached",
   // AWS CodeWhisperer / Kiro-specific patterns
   "usage limit exceeded",
   "quota exceeded",
   "limit exceeded",
   "throttlingexception",
+  // UI-visible quota messages
+  "insufficient balance",
 ];
 
 // T11: Signals that indicate OAuth token is invalid/expired (not permanent deactivation)

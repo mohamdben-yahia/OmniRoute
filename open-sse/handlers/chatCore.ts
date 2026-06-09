@@ -4714,12 +4714,13 @@ export async function handleChatCore({
             );
           } else {
             await updateProviderConnection(connectionId, {
+              isActive: false,
               testStatus: "credits_exhausted",
               lastErrorType: errorType,
               lastError: message,
               errorCode: statusCode,
             });
-            console.warn(`[provider] Node ${connectionId} exhausted quota (${statusCode})`);
+            console.warn(`[provider] Node ${connectionId} exhausted quota (${statusCode}) - account deactivated`);
           }
         } else if (errorType === PROVIDER_ERROR_TYPES.ACCOUNT_DEACTIVATED) {
           await updateProviderConnection(connectionId, {
