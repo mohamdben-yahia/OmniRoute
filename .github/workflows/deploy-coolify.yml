@@ -18,6 +18,7 @@ jobs:
       - name: Trigger Coolify Webhook
         env:
           COOLIFY_WEBHOOK_URL: ${{ secrets.COOLIFY_WEBHOOK_URL }}
+          CF_ACCESS_TOKEN: ${{ secrets.CF_ACCESS_TOKEN }}
         run: |
           set -euo pipefail
           
@@ -33,9 +34,18 @@ jobs:
           # Show webhook URL (masked by GitHub) for debugging
           echo "Webhook URL: ${COOLIFY_WEBHOOK_URL}"
           
-          # Trigger the webhook deployment (without -f flag to capture all responses)
+          # Build headers
+          HEADERS=(-H "Content-Type: application/json" -H "User-Agent: GitHub-Actions-Deploy/1.0")
+          
+          # Add Cloudflare bypass token if available (optional)
+          if [ -n "${CF_ACCESS_TOKEN:-}" ]; then
+            HEADERS+=(-H "CF-Access-Token: ${CF_ACCESS_TOKEN}")
+            echo "Using Cloudflare Access Token for bypass"
+          fi
+          
+          # Trigger the webhook deployment
           HTTP_CODE=$(curl -s -X GET "${COOLIFY_WEBHOOK_URL}" \
-            -H "Content-Type: application/json" \
+            "${HEADERS[@]}" \
             -w "%{http_code}" \
             -o /tmp/response.txt)
           
