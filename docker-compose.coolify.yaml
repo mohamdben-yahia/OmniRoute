@@ -18,10 +18,7 @@
 services:
   omniroute:
     container_name: omniroute-coolify
-    build:
-      context: .
-      target: runner-cli
-    image: omniroute:coolify
+    image: ghcr.io/hotopensourcing/omniroute:latest
     restart: unless-stopped
     stop_grace_period: 40s
     environment:
