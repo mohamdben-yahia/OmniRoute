@@ -18,6 +18,7 @@ jobs:
       - name: Trigger Coolify Webhook
         env:
           COOLIFY_WEBHOOK_URL: ${{ secrets.COOLIFY_WEBHOOK_URL }}
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
           CF_ACCESS_TOKEN: ${{ secrets.CF_ACCESS_TOKEN }}
         run: |
           set -euo pipefail
@@ -31,8 +32,14 @@ jobs:
             exit 1
           fi
           
-          # Show webhook URL (masked by GitHub) for debugging
-          echo "Webhook URL: ${COOLIFY_WEBHOOK_URL}"
+          # Build the full webhook URL with token if provided
+          if [ -n "${COOLIFY_TOKEN:-}" ]; then
+            WEBHOOK_URL="${COOLIFY_WEBHOOK_URL}&token=${COOLIFY_TOKEN}"
+            echo "Webhook URL: ${COOLIFY_WEBHOOK_URL}&token=***"
+          else
+            WEBHOOK_URL="${COOLIFY_WEBHOOK_URL}"
+            echo "Webhook URL: ${COOLIFY_WEBHOOK_URL}"
+          fi
           
           # Build headers
           HEADERS=(-H "Content-Type: application/json" -H "User-Agent: GitHub-Actions-Deploy/1.0")
@@ -44,7 +51,7 @@ jobs:
           fi
           
           # Trigger the webhook deployment
-          HTTP_CODE=$(curl -s -X GET "${COOLIFY_WEBHOOK_URL}" \
+          HTTP_CODE=$(curl -s -X GET "${WEBHOOK_URL}" \
             "${HEADERS[@]}" \
             -w "%{http_code}" \
             -o /tmp/response.txt)
