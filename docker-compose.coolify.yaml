@@ -170,10 +170,10 @@ services:
       - qdrant-coolify-data:/qdrant/storage
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:6333/readyz || exit 1"]
-      interval: 20s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 60s
 
 volumes:
   omniroute-coolify-data:
