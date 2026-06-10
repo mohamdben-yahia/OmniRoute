@@ -61,8 +61,40 @@ services:
       REDIS_PORT: ${REDIS_PORT:-6379}
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
 
+      # Qdrant vector database for memory/RAG
+      QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
+      QDRANT_HOST: ${QDRANT_HOST:-qdrant}
+      QDRANT_PORT: ${QDRANT_PORT:-6333}
+      QDRANT_API_KEY: ${QDRANT_API_KEY:-}
+      QDRANT_GRPC_PORT: ${QDRANT_GRPC_PORT:-6334}
+
+      # Performance & Caching Optimizations
+      # Semantic cache for LLM responses (reduces cost/latency for temp=0 requests)
+      CACHE_ENABLED: ${CACHE_ENABLED:-true}
+      CACHE_TTL: ${CACHE_TTL:-300000}
+      CACHE_MAX_SIZE: ${CACHE_MAX_SIZE:-100}
+      CACHE_MAX_BYTES: ${CACHE_MAX_BYTES:-10485760}
+
+      # Memory system backend (use Qdrant for better performance)
+      MEMORY_VECTOR_STORE: ${MEMORY_VECTOR_STORE:-qdrant}
+      MEMORY_EMBEDDING_MODEL: ${MEMORY_EMBEDDING_MODEL:-openai/text-embedding-3-small}
+
+      # Upstream timeouts (tune for your network/providers)
+      FETCH_TIMEOUT_MS: ${FETCH_TIMEOUT_MS:-60000}
+      STREAM_IDLE_TIMEOUT_MS: ${STREAM_IDLE_TIMEOUT_MS:-30000}
+      STREAM_READINESS_TIMEOUT_MS: ${STREAM_READINESS_TIMEOUT_MS:-10000}
+
+      # Connection pooling & resilience
+      CREDENTIAL_HEALTH_CHECK_INTERVAL: ${CREDENTIAL_HEALTH_CHECK_INTERVAL:-300000}
+      
+      # Disable expensive operations in production if not needed
+      OMNIROUTE_SKIP_DB_HEALTHCHECK: ${OMNIROUTE_SKIP_DB_HEALTHCHECK:-0}
+      OMNIROUTE_DB_HEALTHCHECK_INTERVAL_MS: ${OMNIROUTE_DB_HEALTHCHECK_INTERVAL_MS:-21600000}
+
     depends_on:
       redis:
+        condition: service_healthy
+      qdrant:
         condition: service_healthy
 
     expose:
@@ -91,8 +123,19 @@ services:
     command: >
       redis-server
       --appendonly yes
-      --maxmemory 256mb
+      --maxmemory 512mb
       --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+      --tcp-backlog 511
+      --timeout 300
+      --tcp-keepalive 300
+      --lazyfree-lazy-eviction yes
+      --lazyfree-lazy-expire yes
+      --lazyfree-lazy-server-del yes
+      --replica-lazy-flush yes
+      --lazyfree-lazy-user-del yes
     expose:
       - "6379"
     volumes:
@@ -104,8 +147,38 @@ services:
       retries: 3
       start_period: 5s
 
+  qdrant:
+    container_name: qdrant-coolify
+    image: qdrant/qdrant:latest
+    restart: unless-stopped
+    stop_grace_period: 30s
+    environment:
+      QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY:-}
+      QDRANT__SERVICE__GRPC_PORT: ${QDRANT_GRPC_PORT:-6334}
+      QDRANT__LOG_LEVEL: ${QDRANT_LOG_LEVEL:-INFO}
+      # Performance tuning
+      QDRANT__STORAGE__PERFORMANCE__MAX_SEARCH_THREADS: ${QDRANT_MAX_SEARCH_THREADS:-4}
+      QDRANT__STORAGE__OPTIMIZERS__DEFAULT_SEGMENT_NUMBER: ${QDRANT_DEFAULT_SEGMENT_NUMBER:-2}
+      QDRANT__STORAGE__OPTIMIZERS__INDEXING_THRESHOLD_KB: ${QDRANT_INDEXING_THRESHOLD_KB:-20000}
+      QDRANT__STORAGE__WAL__WAL_CAPACITY_MB: ${QDRANT_WAL_CAPACITY_MB:-32}
+      # Memory optimization
+      QDRANT__STORAGE__PERFORMANCE__MAX_OPTIMIZATION_THREADS: ${QDRANT_MAX_OPTIMIZATION_THREADS:-2}
+    expose:
+      - "6333"  # HTTP API
+      - "6334"  # gRPC API
+    volumes:
+      - qdrant-coolify-data:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:6333/readyz || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
 volumes:
   omniroute-coolify-data:
     name: omniroute-coolify-data
   redis-coolify-data:
     name: redis-coolify-data
+  qdrant-coolify-data:
+    name: qdrant-coolify-data
