@@ -17,6 +17,7 @@ import cp from "child_process";
 import { resolveDataDir, getLegacyDotDataDir } from "../dataPaths";
 import { runMigrations } from "./migrationRunner";
 import { runDbHealthCheck } from "./healthCheck";
+import { resetAllDbModuleState } from "./stateReset";
 import { parseStoredPayload } from "../logPayloads";
 import {
   buildArtifactRelativePath,
@@ -1645,6 +1646,12 @@ export function closeDbInstance(options?: { checkpointMode?: CheckpointMode | nu
       if (db.open) db.close();
     } finally {
       setDb(null);
+      // Module-level caches (prepared statements, schema-check memos — e.g.
+      // apiKeys.ts) are bound to the closed connection. Without this, a recreated
+      // DB (tests, backup restore of an older snapshot) hits "no such column"
+      // on the stale re-prepare path. backup.ts already does this on restore;
+      // close/reset must too (found by the 6A.1 orphan-test re-wire, 2026-06-09).
+      resetAllDbModuleState();
     }
   }
 
