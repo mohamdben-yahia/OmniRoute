@@ -116,7 +116,7 @@ services:
       start_period: 15s
 
   redis:
-    container_name: redis-coolify
+    container_name: redis-omniroute
     image: redis:8.6.2-alpine
     restart: unless-stopped
     stop_grace_period: 10s
@@ -139,7 +139,7 @@ services:
     expose:
       - "6379"
     volumes:
-      - redis-coolify-data:/data
+      - redis-omniroute-data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 15s
@@ -148,7 +148,7 @@ services:
       start_period: 5s
 
   qdrant:
-    container_name: qdrant-coolify
+    container_name: qdrant-omniroute
     image: qdrant/qdrant:latest
     restart: unless-stopped
     stop_grace_period: 30s
@@ -167,7 +167,7 @@ services:
       - "6333"  # HTTP API
       - "6334"  # gRPC API
     volumes:
-      - qdrant-coolify-data:/qdrant/storage
+      - qdrant-omniroute-data:/qdrant/storage
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:6333/healthz || exit 1"]
       interval: 15s
@@ -178,7 +178,7 @@ services:
 volumes:
   omniroute-coolify-data:
     name: omniroute-coolify-data
-  redis-coolify-data:
-    name: redis-coolify-data
-  qdrant-coolify-data:
-    name: qdrant-coolify-data
+  redis-omniroute-data:
+    name: redis-omniroute-data
+  qdrant-omniroute-data:
+    name: qdrant-omniroute-data
