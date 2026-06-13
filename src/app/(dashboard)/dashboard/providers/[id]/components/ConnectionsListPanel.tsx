@@ -132,8 +132,6 @@ export default function ConnectionsListPanel({
 }: ConnectionsListPanelProps) {
   const sorted = [...connections].sort((a, b) => (a.priority || 0) - (b.priority || 0));
   const hasAnyTag = sorted.some((c) => c.providerSpecificData?.tag as string | undefined);
-  const allSelected = selectedIds.size === connections.length && connections.length > 0;
-  const someSelected = selectedIds.size > 0 && selectedIds.size < connections.length;
   const bulkBusy = batchUpdating !== null || batchRetesting || batchDeleting || batchTesting;
   const bulkActions = selectedIds.size > 0 && (
     <div className="flex flex-wrap items-center justify-end gap-2">
@@ -208,6 +206,14 @@ export default function ConnectionsListPanel({
           return c.testStatus === healthFilter;
         });
 
+  // When a filter is active, check selection against filtered connections only
+  const connectionsForSelection = healthFilter === "all" ? connections : filtered;
+  const allSelected = 
+    connectionsForSelection.length > 0 && 
+    connectionsForSelection.every((c) => selectedIds.has(c.id));
+  const someSelected = 
+    connectionsForSelection.some((c) => selectedIds.has(c.id)) && !allSelected;
+
   const totalFilteredPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const clampedPage = Math.min(page, totalFilteredPages - 1);
   const pageStart = clampedPage * PAGE_SIZE;
@@ -265,9 +271,12 @@ export default function ConnectionsListPanel({
 
   if (!hasAnyTag) {
     const pageConnections = filtered.slice(pageStart, pageEnd);
-    const allSelectedPage =
-      pageConnections.length > 0 && pageConnections.every((c) => selectedIds.has(c.id));
-    const someSelectedPage = pageConnections.some((c) => selectedIds.has(c.id));
+    // When a filter is active, "select all" should select ALL filtered connections across all pages
+    // When no filter (healthFilter === "all"), only select the current page
+    const connectionsToToggle = healthFilter === "all" ? pageConnections : filtered;
+    const allSelectedFiltered =
+      connectionsToToggle.length > 0 && connectionsToToggle.every((c) => selectedIds.has(c.id));
+    const someSelectedFiltered = connectionsToToggle.some((c) => selectedIds.has(c.id));
     return (
       <>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 px-3 py-2 bg-muted/50 rounded-t-lg border border-b-0 border-border">
@@ -275,22 +284,24 @@ export default function ConnectionsListPanel({
             <label className="flex items-center gap-2 cursor-pointer select-none">
               <input
                 type="checkbox"
-                checked={allSelectedPage}
+                checked={allSelectedFiltered}
                 ref={(el) => {
-                  if (el) el.indeterminate = someSelectedPage;
+                  if (el) el.indeterminate = someSelectedFiltered && !allSelectedFiltered;
                 }}
                 onChange={() => {
-                  if (allSelectedPage) {
-                    const toRemove = new Set(pageConnections.map((c) => c.id));
+                  if (allSelectedFiltered) {
+                    // Deselect all filtered connections
+                    const toRemove = new Set(connectionsToToggle.map((c) => c.id));
                     setSelectedIds((prev) => {
                       const next = new Set(prev);
                       for (const id of toRemove) next.delete(id);
                       return next;
                     });
                   } else {
+                    // Select all filtered connections
                     setSelectedIds((prev) => {
                       const next = new Set(prev);
-                      for (const c of pageConnections) next.add(c.id);
+                      for (const c of connectionsToToggle) next.add(c.id);
                       return next;
                     });
                   }
@@ -446,7 +457,24 @@ export default function ConnectionsListPanel({
                 ref={(el) => {
                   if (el) el.indeterminate = someSelected;
                 }}
-                onChange={handleToggleSelectAll}
+                onChange={() => {
+                  if (allSelected) {
+                    // Deselect all filtered connections
+                    const toRemove = new Set(connectionsForSelection.map((c) => c.id));
+                    setSelectedIds((prev) => {
+                      const next = new Set(prev);
+                      for (const id of toRemove) next.delete(id);
+                      return next;
+                    });
+                  } else {
+                    // Select all filtered connections
+                    setSelectedIds((prev) => {
+                      const next = new Set(prev);
+                      for (const c of connectionsForSelection) next.add(c.id);
+                      return next;
+                    });
+                  }
+                }}
                 className="w-4 h-4 rounded border-border text-primary focus:ring-primary/30 cursor-pointer"
               />
               <span className="text-sm font-medium text-text-muted">
