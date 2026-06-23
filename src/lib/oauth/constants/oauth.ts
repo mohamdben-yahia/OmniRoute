@@ -403,6 +403,22 @@ export const TRAE_CONFIG = {
 //                          with an IDE-supplied ?state= param (see field below)
 //   - firebaseApiKey     → reserved for Phase 2
 //   - ideName            → sent in extension headers
+// Z.AI Coding Plan OAuth Configuration (Standard Authorization Code Flow)
+// Real OAuth endpoints from chat.z.ai (not the custom CLI flow)
+// Client ID extracted from ZCode: client_P8X5CMWmlaRO9gyO-KSqtg
+export const ZAI_CODING_PLAN_CONFIG = {
+  clientId: resolvePublicCred("zai_coding_plan_id", "ZAI_CODING_PLAN_CLIENT_ID"),
+  // Real OAuth endpoints (https://chat.z.ai/auth/oauth/authorize)
+  authorizeUrl: "https://chat.z.ai/auth/oauth/authorize",
+  tokenUrl: "https://chat.z.ai/auth/oauth/token",
+  // API endpoint for chat completions
+  apiBaseUrl: "https://zcode.z.ai/api/v1/zcode-plan/anthropic",
+  // ZCode uses custom redirect URI scheme
+  redirectUri: "zcode://zai-auth/callback",
+  scopes: [],
+  codeChallengeMethod: "S256" as const,
+};
+
 export const WINDSURF_CONFIG = {
   // RETIRED 2026-05-29 — endpoint returns 404 post-rebrand. Phase 2 will replace.
   authorizeUrl: "https://app.devin.ai/editor/signin",
@@ -448,6 +464,7 @@ export const PROVIDERS = {
   QODER: "qoder",
   WINDSURF: "windsurf",
   ANTIGRAVITY: "antigravity",
+  ZAI_CODING_PLAN: "zai-coding-plan",
   AGY: "agy",
   KIMI_CODING: "kimi-coding",
   OPENAI: "openai",

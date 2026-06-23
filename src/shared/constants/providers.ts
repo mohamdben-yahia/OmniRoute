@@ -1301,6 +1301,23 @@ export const APIKEY_PROVIDERS = {
     apiHint: "API key from https://open.bigmodel.cn/usercenter/apikeys",
     rateLimitProtected: true,
   },
+  "zai-coding-plan": {
+    id: "zai-coding-plan",
+    alias: "zcp",
+    name: "Z.AI Coding Plan",
+    icon: "code",
+    color: "#2563EB",
+    textIcon: "ZC",
+    website: "https://zcode.z.ai",
+    authHint: "OAuth via ZCode CLI flow - JWT token-based authentication",
+    rateLimitProtected: true,
+    serviceKinds: ["llm"],
+    subscriptionRisk: true,
+    riskNoticeVariant: "oauth" as RiskNoticeVariant,
+    notice: {
+      text: "Z.AI Coding Plan requires OAuth authentication via ZCode CLI flow. The provider uses JWT tokens for API access.",
+    },
+  },
   wafer: {
     id: "wafer",
     alias: "wafer",
