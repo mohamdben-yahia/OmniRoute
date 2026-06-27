@@ -357,6 +357,23 @@ export const OAUTH_PROVIDERS = {
     website: "https://cli.devin.ai",
     rateLimitProtected: true,
   },
+  "zai-coding-plan": {
+    id: "zai-coding-plan",
+    alias: "zcp",
+    name: "Z.AI Coding Plan",
+    icon: "code",
+    color: "#2563EB",
+    textIcon: "ZC",
+    website: "https://zcode.z.ai",
+    subscriptionRisk: true,
+    riskNoticeVariant: "deprecated",
+    deprecated: true,
+    deprecationReason:
+      "Aliyun WAF blocks external LLM calls with a second-level captcha challenge (x-aliyun-captcha-verify-param). Three approaches tested (OAuth direct, JWT only, JWT + acw_tc cookie via Puppeteer) all return 403. The ZCode desktop client succeeds because it provides a real browser fingerprint (Canvas/WebGL/Audio). OmniRoute cannot reproduce this context from a server-side proxy. See zai-investigation/ZAI_WAF_FINAL_REPORT.md. Use the official Zhipu/GLM API (bigmodel.cn) instead.",
+    authHint:
+      "[DEPRECATED — see deprecation reason] Authorize via ZCode OAuth. The redirect returns a code-... token used directly as the Bearer credential.",
+    rateLimitProtected: true,
+  },
 };
 
 // Web / Cookie Providers
@@ -1300,23 +1317,6 @@ export const APIKEY_PROVIDERS = {
     website: "https://open.bigmodel.cn",
     apiHint: "API key from https://open.bigmodel.cn/usercenter/apikeys",
     rateLimitProtected: true,
-  },
-  "zai-coding-plan": {
-    id: "zai-coding-plan",
-    alias: "zcp",
-    name: "Z.AI Coding Plan",
-    icon: "code",
-    color: "#2563EB",
-    textIcon: "ZC",
-    website: "https://zcode.z.ai",
-    authHint: "OAuth via ZCode CLI flow - JWT token-based authentication",
-    rateLimitProtected: true,
-    serviceKinds: ["llm"],
-    subscriptionRisk: true,
-    riskNoticeVariant: "oauth" as RiskNoticeVariant,
-    notice: {
-      text: "Z.AI Coding Plan requires OAuth authentication via ZCode CLI flow. The provider uses JWT tokens for API access.",
-    },
   },
   wafer: {
     id: "wafer",
