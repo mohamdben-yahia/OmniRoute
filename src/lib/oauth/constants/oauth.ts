@@ -412,7 +412,6 @@ export const TRAE_CONFIG = {
 //                          with an IDE-supplied ?state= param (see field below)
 //   - firebaseApiKey     → reserved for Phase 2
 //   - ideName            → sent in extension headers
-<<<<<<< HEAD
 // Z.AI Coding Plan OAuth Configuration
 //
 // Extracted from ZCode app.asar.
@@ -444,8 +443,6 @@ export const ZAI_CODING_PLAN_CONFIG = {
   scopes: [],
 };
 
-=======
->>>>>>> 7f312256720055d6671f1aac902da13068226595
 export const WINDSURF_CONFIG = {
   // RETIRED 2026-05-29 — endpoint returns 404 post-rebrand. Phase 2 will replace.
   authorizeUrl: "https://app.devin.ai/editor/signin",
