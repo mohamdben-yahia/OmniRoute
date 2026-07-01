@@ -9,7 +9,6 @@ import { freebuff, FREEBUFF_OAUTH_CONFIG } from "@/lib/oauth/providers/freebuff"
 import { generateFreebuffFingerprint } from "@/lib/oauth/freebuff/fingerprint";
 import {
   freebuffConnectionSchema,
-  freebuffUuidSchema,
   type FreebuffConnection,
 } from "@/shared/schemas/providers/freebuff";
 
@@ -23,6 +22,7 @@ export {
   freebuffLoginStatusResponseSchema as freebuffLoginStatusSchema,
   type FreebuffLoginStartResponse as FreebuffLoginStart,
   type FreebuffLoginStatusResponse as FreebuffLoginStatus,
+  type FreebuffFingerprintTriple,
 } from "./oauth.ts";
 
 /**
@@ -70,32 +70,6 @@ export const freebuffStreakSchema = z.object({
   bonusCredits: z.number().int().nonnegative().optional(),
 });
 export type FreebuffStreak = z.infer<typeof freebuffStreakSchema>;
-
-export const freebuffLoginStartSchema = z.object({
-  /** Opaque id used to poll the login status. */
-  flowId: freebuffUuidSchema,
-  /** URL the user must open in a browser to complete PKCE. */
-  loginUrl: z.string().url(),
-  /** ISO-8601 timestamp after which the flow expires. */
-  expiresAt: z.string().datetime(),
-});
-export type FreebuffLoginStart = z.infer<typeof freebuffLoginStartSchema>;
-
-export const freebuffLoginStatusSchema = z.object({
-  flowId: freebuffUuidSchema,
-  status: z.enum(["pending", "completed", "expired", "error"]),
-  /** Populated when status === "completed". */
-  authToken: freebuffUuidSchema.optional(),
-  fingerprintId: z
-    .string()
-    .regex(/^enhanced-[A-Za-z0-9_-]{43}$/)
-    .optional(),
-  userId: freebuffUuidSchema.optional(),
-  userEmail: z.string().email().optional(),
-  /** Human-readable error when status === "error". */
-  error: z.string().optional(),
-});
-export type FreebuffLoginStatus = z.infer<typeof freebuffLoginStatusSchema>;
 
 // ---------------------------------------------------------------------------
 // Internal helpers — connection lookup & error mapping.
@@ -289,13 +263,12 @@ export async function getStreak(
 
 /**
  * Starts a PKCE login flow. Returns the `loginUrl` the user must open
- * and a `flowId` to poll status with.
+ * and the `fingerprintHash` + `expiresAt` triple required to poll status.
  *
- * The `flowId` is synthesized client-side and stored as a transient row
- * in the connection store so `pollLoginStatus` can recover the upstream
- * `fingerprintHash` + `expiresAt` triple returned by `startLogin` (rapport
- * §5.3). The actual upstream call is delegated to `oauth.startLogin` which
- * targets `POST /api/auth/cli/code` (the wire-format-correct endpoint).
+ * The upstream `fingerprintHash` is persisted as a transient row in the
+ * connection store so `pollLoginStatus` can recover it. The actual upstream
+ * call is delegated to `oauth.startLogin` which targets
+ * `POST /api/auth/cli/code` (the wire-format-correct endpoint).
  */
 export async function startLogin(): Promise<FreebuffLoginStart> {
   const { fingerprintId } = generateFreebuffFingerprint();
@@ -303,12 +276,6 @@ export async function startLogin(): Promise<FreebuffLoginStart> {
   const { loginUrl, fingerprintHash, expiresAt } = await oauthStartLogin({
     fingerprintId,
   });
-
-  // Synthesize a flowId (opaque client handle) and persist the triple
-  // keyed by it so pollLoginStatus can recover it.
-  const flowId = freebuffUuidSchema.parse(
-    globalThis.crypto.randomUUID(),
-  );
 
   const transient: FreebuffConnection = {
     authToken: "00000000-0000-4000-8000-000000000000", // placeholder
@@ -318,16 +285,12 @@ export async function startLogin(): Promise<FreebuffLoginStart> {
   };
   await saveFreebuffConnection(transient);
 
-  return {
-    flowId,
-    loginUrl,
-    expiresAt: typeof expiresAt === "string" ? expiresAt : new Date(expiresAt).toISOString(),
-  };
+  return { loginUrl, fingerprintHash, expiresAt };
 }
 
 /** Polls the status of an in-flight PKCE flow. */
 export async function pollLoginStatus(
-  flowId: string,
+  triple: FreebuffFingerprintTriple,
 ): Promise<FreebuffLoginStatus> {
   const all = await listFreebuffConnections();
   // The most-recently created transient connection is the active flow.
@@ -336,22 +299,22 @@ export async function pollLoginStatus(
     .find((c) => c.authToken === "00000000-0000-4000-8000-000000000000");
   if (!transient) {
     return {
-      flowId,
       status: "expired",
       error: "No in-flight Freebuff login found",
     };
   }
 
-  const expiresAt =
-    transient.loginCompletedAt ?? Date.now() + 60_000;
-  const triple = {
+  const oauthTriple = {
     fingerprintId: transient.fingerprintId,
     fingerprintHash: transient.fingerprintHash ?? "0".repeat(64),
-    expiresAt: new Date(expiresAt).toISOString(),
+    expiresAt:
+      typeof triple.expiresAt === "string"
+        ? triple.expiresAt
+        : new Date(triple.expiresAt).toISOString(),
   };
 
   const { pollLoginStatus: oauthPollLoginStatus } = await import("./oauth.ts");
-  const response = await oauthPollLoginStatus(triple);
+  const response = await oauthPollLoginStatus(oauthTriple);
 
   if (response.status === "completed") {
     // Persist the real connection, replacing the transient.
@@ -366,21 +329,17 @@ export async function pollLoginStatus(
       loginCompletedAt: Date.now(),
     });
     return {
-      flowId,
       status: "completed",
-      authToken: user.authToken,
-      fingerprintId: transient.fingerprintId,
-      userId: user.userId,
-      userEmail: user.userEmail,
+      user,
     };
   }
   if (response.status === "expired") {
-    return { flowId, status: "expired" };
+    return { status: "expired" };
   }
   if (response.status === "error") {
-    return { flowId, status: "error", error: response.error };
+    return { status: "error", error: response.error };
   }
-  return { flowId, status: "pending" };
+  return { status: "pending" };
 }
 
 /**
