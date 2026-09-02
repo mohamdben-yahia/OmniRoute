@@ -104,7 +104,7 @@ function runNextBuild() {
           "build",
           resolveNextBuildBundlerFlag(),
         ]
-      : [nextBin, "build", resolveNextBuildBundlerFlag()];
+      : [nextBin, "build", resolveNextBuildBundlerFlag(buildEnv)];
     const child = spawn(process.execPath, nextArgs, {
       cwd: projectRoot,
       stdio: "inherit",
@@ -204,15 +204,25 @@ export function resolveNextBuildEnv(baseEnv = process.env, platform = process.pl
   // Turbopack's native (Rust, off-V8-heap) memory, which is the default bundler as of
   // #6283. On memory-constrained machines, set OMNIROUTE_USE_TURBOPACK=0 (webpack
   // fallback) instead of raising this heap value; see docs/reference/ENVIRONMENT.md.
-  if (!/--max-old-space-size/.test(env.NODE_OPTIONS || "")) {
-    // Default 8 GB (was 4 GB): the clean module graph peaks ~3.9 GB during the webpack
-    // production pass, which brushed the old 4 GB ceiling on a borderline OOM. 8 GB gives
-    // headroom without risk. NOTE: heap size does NOT fix a poisoned scope — if the build
-    // OOMs/livelocks far above this, check for worktrees/cruft leaking into the tsconfig
-    // scope (run `npm run check:build-scope`), not for "more heap". See incident 2026-06-25.
-    const heapMb = Number(baseEnv.OMNIROUTE_BUILD_MEMORY_MB) || 8192;
+  // Default 8 GB (was 4 GB): the clean module graph peaks ~3.9 GB during the webpack
+  // production pass, which brushed the old 4 GB ceiling on a borderline OOM. 8 GB gives
+  // headroom without risk. Ensure that an existing stale ceiling (e.g. 4096 from a previous
+  // container env) is raised to at least 8192 so webpack does not OOM.
+  const existingMatch = (env.NODE_OPTIONS || "").match(/--max-old-space-size=(\d+)/);
+  const existingMb = existingMatch ? Number(existingMatch[1]) : 0;
+  const requestedMb = Number(baseEnv.OMNIROUTE_BUILD_MEMORY_MB) || 0;
+  const heapMb = requestedMb || (existingMb >= 8192 ? existingMb : 8192);
+  if (existingMatch) {
+    if (existingMb < heapMb || requestedMb) {
+      env.NODE_OPTIONS = env.NODE_OPTIONS.replace(
+        /--max-old-space-size=\d+/,
+        `--max-old-space-size=${heapMb}`
+      );
+    }
+  } else {
     env.NODE_OPTIONS = `${env.NODE_OPTIONS || ""} --max-old-space-size=${heapMb}`.trim();
   }
+  console.log(`[build-next-isolated] Effective NODE_OPTIONS: ${env.NODE_OPTIONS}`);
 
   return env;
 }
