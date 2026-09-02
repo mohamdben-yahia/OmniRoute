@@ -67,6 +67,17 @@ async function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function getLegacyAssetName(version) {
+  const v = version.replace(/^v/i, "");
+  if (process.platform === "darwin" && process.arch === "arm64") return `tls-client-darwin-arm64-${v}.dylib`;
+  if (process.platform === "darwin" && process.arch === "x64") return `tls-client-darwin-amd64-${v}.dylib`;
+  if (process.platform === "linux" && process.arch === "x64") return `tls-client-linux-ubuntu-amd64-${v}.so`;
+  if (process.platform === "linux" && process.arch === "arm64") return `tls-client-linux-arm64-${v}.so`;
+  if (process.platform === "win32" && process.arch === "x64") return `tls-client-windows-64-${v}.dll`;
+  if (process.platform === "win32" && process.arch === "ia32") return `tls-client-windows-32-${v}.dll`;
+  return null;
+}
+
 async function attemptDownload() {
   const resp = await fetch(GITHUB_API, {
     headers: { "User-Agent": "omniroute-docker-builder" },
@@ -103,6 +114,15 @@ async function attemptDownload() {
   mkdirSync(BIN_DIR, { recursive: true });
   writeFileSync(join(BIN_DIR, asset.name), buf);
   console.log(`✅ Saved ${buf.length} bytes to ${BIN_DIR}/${asset.name}`);
+
+  // tls-client-node's runtime (dist/binary.js::findExistingAsset) looks for the
+  // legacy prefix (e.g. "tls-client-linux-ubuntu-amd64-"). Also write the legacy
+  // alias so runtime findExistingAsset() matches without hitting GitHub.
+  const legacyName = getLegacyAssetName(tag_name);
+  if (legacyName && legacyName !== asset.name) {
+    writeFileSync(join(BIN_DIR, legacyName), buf);
+    console.log(`✅ Also saved legacy alias to ${BIN_DIR}/${legacyName}`);
+  }
 }
 
 for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {

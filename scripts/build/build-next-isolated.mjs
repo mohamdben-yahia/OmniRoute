@@ -373,6 +373,12 @@ export async function main() {
         console.warn("[build-next-isolated] Non-fatal error assembling standalone:", assembleErr);
       }
     }
+    if (result.code !== 0) {
+      console.error(
+        `[build-next-isolated] next build failed with exit code ${result.code}` +
+          (result.signal ? ` (terminated by signal: ${result.signal})` : "")
+      );
+    }
     process.exitCode = result.code;
   } catch (error) {
     console.error("[build-next-isolated] Build failed:", error);
