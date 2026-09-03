@@ -338,23 +338,15 @@ const nextConfig = {
     // and ASTs from accumulating in memory concurrently on memory-tight VPS hosts.
     config.parallelism = 1;
 
-    // ── Build perf: persistent filesystem cache ──────────────────────────────────
-    // Persist webpack's module graph + chunk graph across builds. Without this,
-    // every `next build` re-evaluates the entire dependency graph from scratch
-    // (the biggest wall-clock cost in the production pass for a 2400-file src/).
-    // Next.js auto-enables this in newer versions but only in `.next/cache/webpack`;
-    // we pin the path explicitly so it survives `distDir = ".build/next"`.
-    // maxMemoryGenerations: 1 ensures cached module ASTs are flushed from RAM to disk,
-    // keeping in-process memory footprint bounded under 2 GB.
-    config.cache = {
-      type: "filesystem",
-      cacheDirectory: path.join(projectRoot, ".build", "next", "cache", "webpack"),
-      buildDependencies: {
-        config: [path.resolve(projectRoot, "next.config.mjs")],
-      },
-      compression: false,
-      maxMemoryGenerations: 1,
-    };
+    // ── Build perf: disable packfile cache during production builds ───────────────
+    // Webpack's persistent filesystem cache (PackFileCacheStrategy) walks through
+    // every dependency in node_modules and attempts to serialize the entire graph to disk
+    // at the end of compilation. On this codebase (2400+ files + large vendor packages),
+    // PackFileCacheStrategy's serialization graph consumes over 4 GB of V8 heap and
+    // triggers OOM ("allocation failure; GC in old space requested").
+    // Disabling cache during production builds (config.cache = false) eliminates the
+    // serialization pass entirely, keeping heap usage flat and bounded under 2 GB.
+    config.cache = false;
 
     // ── Build perf: consolidate 9 vendor cacheGroups into one rule ────────────────
     // PR-2 of diegosouzapw/OmniRoute#3932 originally declared 9 separate cacheGroups
