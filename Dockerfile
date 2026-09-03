@@ -182,10 +182,10 @@ ENV OMNIROUTE_MITM_STUB=1
 # on V8, so keep the ceiling. NODE_OPTIONS propagates to the spawned `next build`
 # child (build-next-isolated.mjs → resolveNextBuildEnv spreads process.env).
 # Build-only; the runtime heap is set separately on the runner stage
-# (OMNIROUTE_MEMORY_MB). Override: `--build-arg OMNIROUTE_BUILD_MEMORY_MB=4608`.
-# Calibrated to 4608 MB: with in-process webpack, this provides ~1.5 GB headroom
-# without exhausting physical memory on 4 GB VPS machines.
-ARG OMNIROUTE_BUILD_MEMORY_MB=4608
+# (OMNIROUTE_MEMORY_MB). Override: `--build-arg OMNIROUTE_BUILD_MEMORY_MB=4096`.
+# Calibrated to 4096 MB: with in-process webpack, parallelism=1, and maxMemoryGenerations=1,
+# this provides ~2 GB headroom while staying within VPS host memory limits.
+ARG OMNIROUTE_BUILD_MEMORY_MB=4096
 ENV NODE_OPTIONS="--max-old-space-size=${OMNIROUTE_BUILD_MEMORY_MB}"
 
 # Cap Next.js build worker pools. Next 16 defaults to `os.cpus().length - 1`
@@ -223,7 +223,7 @@ ENV CIRCLE_NODE_TOTAL=${OMNIROUTE_BUILD_WORKERS}
 COPY . ./
 RUN --mount=type=cache,id=s/92ca8a61-c1ba-421f-a389-d48ac7258c2d-next-cache,target=/app/.build/next/cache \
   mkdir -p /app/data \
-  && OMNIROUTE_BUILD_MEMORY_MB=4608 NODE_OPTIONS="--max-old-space-size=4608" npm run build \
+  && OMNIROUTE_BUILD_MEMORY_MB=4096 NODE_OPTIONS="--max-old-space-size=4096" npm run build \
   && node --input-type=module -e "import { createRequire } from 'node:module'; import { pathToFileURL } from 'node:url'; const standaloneRoot = '/app/.build/next/standalone/node_modules/'; const require = createRequire('/app/.build/next/standalone/package.json'); for (const pkg of ['@atjsh/llmlingua-2', '@huggingface/transformers', 'js-tiktoken']) { const resolved = require.resolve(pkg); if (!resolved.startsWith(standaloneRoot)) throw new Error(pkg + ' resolved outside standalone: ' + resolved); await import(pathToFileURL(resolved).href); } const onnxRuntime = require.resolve('onnxruntime-node'); if (!onnxRuntime.startsWith(standaloneRoot)) throw new Error('onnxruntime-node resolved outside standalone: ' + onnxRuntime); await import(pathToFileURL(onnxRuntime).href);"
 
 # ── Runner base ────────────────────────────────────────────────────────────

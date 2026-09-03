@@ -334,14 +334,18 @@ const nextConfig = {
       isNextIntlExtractorDynamicImportWarning,
     ];
     config.optimization = config.optimization || {};
+    // Bound module compilation concurrency to 1 to prevent multiple route graphs
+    // and ASTs from accumulating in memory concurrently on memory-tight VPS hosts.
+    config.parallelism = 1;
 
     // ── Build perf: persistent filesystem cache ──────────────────────────────────
     // Persist webpack's module graph + chunk graph across builds. Without this,
     // every `next build` re-evaluates the entire dependency graph from scratch
     // (the biggest wall-clock cost in the production pass for a 2400-file src/).
     // Next.js auto-enables this in newer versions but only in `.next/cache/webpack`;
-    // we pin the path explicitly so it survives `distDir = ".build/next"` and set
-    // gzip compression for a smaller on-disk cache footprint.
+    // we pin the path explicitly so it survives `distDir = ".build/next"`.
+    // maxMemoryGenerations: 1 ensures cached module ASTs are flushed from RAM to disk,
+    // keeping in-process memory footprint bounded under 2 GB.
     config.cache = {
       type: "filesystem",
       cacheDirectory: path.join(projectRoot, ".build", "next", "cache", "webpack"),
@@ -349,6 +353,7 @@ const nextConfig = {
         config: [path.resolve(projectRoot, "next.config.mjs")],
       },
       compression: false,
+      maxMemoryGenerations: 1,
     };
 
     // ── Build perf: consolidate 9 vendor cacheGroups into one rule ────────────────
