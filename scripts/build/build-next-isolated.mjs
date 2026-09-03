@@ -204,13 +204,13 @@ export function resolveNextBuildEnv(baseEnv = process.env, platform = process.pl
   // Turbopack's native (Rust, off-V8-heap) memory, which is the default bundler as of
   // #6283. On memory-constrained machines, set OMNIROUTE_USE_TURBOPACK=0 (webpack
   // fallback) instead of raising this heap value; see docs/reference/ENVIRONMENT.md.
-  // 4096 MB (4 GB) is the calibrated ceiling: with webpackBuildWorker disabled,
-  // parallelism=1, and maxMemoryGenerations=1, single-process peak usage stays well under
-  // 2 GB, giving ~2 GB of safe headroom while preventing host-level OOM kills on VPS hosts.
+  // 5120 MB (5 GB) is the calibrated ceiling: webpack peak usage is ~4059 MB at the final
+  // chunk-emission phase. 5120 MB provides ~1060 MB of safe headroom so V8 never triggers
+  // allocation failures or ineffective mark-compacts near the limit.
   const existingMatch = (env.NODE_OPTIONS || "").match(/--max-old-space-size=(\d+)/);
   const existingMb = existingMatch ? Number(existingMatch[1]) : 0;
   const requestedMb = Number(baseEnv.OMNIROUTE_BUILD_MEMORY_MB) || 0;
-  const heapMb = Math.max(4096, requestedMb, existingMb);
+  const heapMb = Math.max(5120, requestedMb, existingMb);
   if (existingMatch) {
     env.NODE_OPTIONS = env.NODE_OPTIONS.replace(
       /--max-old-space-size=\d+/,
