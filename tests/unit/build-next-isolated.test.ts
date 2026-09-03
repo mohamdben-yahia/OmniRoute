@@ -134,8 +134,8 @@ test("resolveNextBuildEnv does not clobber an existing --max-old-space-size (Doc
 });
 
 test("resolveNextBuildEnv honors the OMNIROUTE_BUILD_MEMORY_MB override", () => {
-  const env = resolveNextBuildEnv({ OMNIROUTE_BUILD_MEMORY_MB: "6144" });
-  assert.match(env.NODE_OPTIONS, /--max-old-space-size=6144/);
+  const env = resolveNextBuildEnv({ OMNIROUTE_BUILD_MEMORY_MB: "12288" });
+  assert.match(env.NODE_OPTIONS, /--max-old-space-size=12288/);
 });
 
 test("getTransientBuildPaths leaves _tasks in place by default", () => {
