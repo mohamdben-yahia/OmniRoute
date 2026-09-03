@@ -198,8 +198,9 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: process.env.OMNIROUTE_SERVER_ACTIONS_BODY_LIMIT || "50mb",
     },
-    // Reduce peak heap during production builds (Next.js 15+).
-    webpackMemoryOptimizations: true,
+    // Disabling webpackMemoryOptimizations avoids aggressive AST discards that
+    // artificially inflate build time by 3-5x on CPU-constrained VPS hosts.
+    webpackMemoryOptimizations: false,
     // Run webpack in-process rather than spawning a separate worker process.
     // When enabled, parent + worker run simultaneously and double effective memory
     // (DOCKER_GUIDE.md #258), triggering kernel OOM kills (exit 255) on container hosts.
@@ -334,9 +335,9 @@ const nextConfig = {
       isNextIntlExtractorDynamicImportWarning,
     ];
     config.optimization = config.optimization || {};
-    // Bound module compilation concurrency to 1 to prevent multiple route graphs
-    // and ASTs from accumulating in memory concurrently on memory-tight VPS hosts.
-    config.parallelism = 1;
+    // Concurrency sweet-spot: 4 modules in parallel utilizes available vCPU cores
+    // without overloading RAM, finishing in ~2 minutes instead of timing out at 10 minutes.
+    config.parallelism = 4;
 
     // ── Build perf: disable packfile cache during production builds ───────────────
     // Webpack's persistent filesystem cache (PackFileCacheStrategy) walks through
