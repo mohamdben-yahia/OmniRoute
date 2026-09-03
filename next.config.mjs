@@ -269,6 +269,12 @@ const nextConfig = {
       "./app.__qa_backup/**/*",
       "./tests/**/*",
       "./logs/**/*",
+      "./docs/i18n/**/*",
+      "./docs/diagrams/**/*",
+      "./scripts/**/*",
+      "./electron/**/*",
+      "./vscode-extension/**/*",
+      "./.build/next/cache/**/*",
     ],
   },
   serverExternalPackages: [
@@ -342,7 +348,7 @@ const nextConfig = {
       buildDependencies: {
         config: [path.resolve(projectRoot, "next.config.mjs")],
       },
-      compression: "gzip",
+      compression: false,
     };
 
     // ── Build perf: consolidate 9 vendor cacheGroups into one rule ────────────────
