@@ -50,14 +50,38 @@ function readArgDefault(name: string): number {
 test("the Docker build's worker pool is derived from OMNIROUTE_BUILD_WORKERS", () => {
   // assert.ok(boolean), not assert.match — a failing assert.match dumps the
   // whole Dockerfile into the report.
+  const workersEnv = dockerfile.match(
+    /^ENV CIRCLE_NODE_TOTAL=\$\{OMNIROUTE_BUILD_WORKERS(?::-(\d+))?\}$/m
+  );
   assert.ok(
-    /^ENV CIRCLE_NODE_TOTAL=\$\{OMNIROUTE_BUILD_WORKERS\}$/m.test(dockerfile),
+    workersEnv,
     "CIRCLE_NODE_TOTAL must stay wired to the build arg so a big builder can raise it"
   );
+  if (workersEnv?.[1]) {
+    // Coolify forwards every ARG as `--build-arg NAME`; a defined-but-empty app
+    // var overrides the ARG default, so the inline fallback must survive and
+    // match it.
+    assert.equal(
+      Number(workersEnv[1]),
+      readArgDefault("OMNIROUTE_BUILD_WORKERS"),
+      "the empty-value fallback must match the ARG default"
+    );
+  }
+
+  const nodeOptionsEnv = dockerfile.match(
+    /^ENV NODE_OPTIONS="--max-old-space-size=\$\{OMNIROUTE_BUILD_MEMORY_MB(?::-(\d+))?\}"$/m
+  );
   assert.ok(
-    /^ENV NODE_OPTIONS="--max-old-space-size=\$\{OMNIROUTE_BUILD_MEMORY_MB\}"$/m.test(dockerfile),
+    nodeOptionsEnv,
     "the build heap ceiling must stay wired to OMNIROUTE_BUILD_MEMORY_MB"
   );
+  if (nodeOptionsEnv?.[1]) {
+    assert.equal(
+      Number(nodeOptionsEnv[1]),
+      readArgDefault("OMNIROUTE_BUILD_MEMORY_MB"),
+      "the empty-value fallback must match the ARG default"
+    );
+  }
 });
 
 test("worker count × measured per-process RSS fits a 16 GB GitHub runner", () => {

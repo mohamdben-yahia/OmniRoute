@@ -22,6 +22,14 @@ services:
       target: runner-base
       args:
         OMNIROUTE_BASE_PATH: ${OMNIROUTE_BASE_PATH:-}
+        # Pin these explicitly: Coolify forwards every app env var as
+        # `--build-arg NAME`, and an empty value overrides the Dockerfile
+        # default. Empty OMNIROUTE_BUILD_MEMORY_MB makes
+        # NODE_OPTIONS="--max-old-space-size=" and `npm run build` exits 1;
+        # empty OMNIROUTE_BUILD_WORKERS blanks CIRCLE_NODE_TOTAL.
+        OMNIROUTE_USE_TURBOPACK: "0"
+        OMNIROUTE_BUILD_MEMORY_MB: "6144"
+        OMNIROUTE_BUILD_WORKERS: "2"
     image: omniroute:coolify
     restart: unless-stopped
     stop_grace_period: 40s
