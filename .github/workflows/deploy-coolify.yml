@@ -101,18 +101,28 @@ jobs:
             echo "Using Cloudflare Access Token for bypass"
           fi
           
-          # Trigger the webhook deployment
-          HTTP_CODE=$(curl -s -X GET "${WEBHOOK_URL}" \
+# Coolify's deploy API is POST /api/v1/deploy (Bearer auth).
+          # GET returns 405 Method Not Allowed on v4.2+, so POST first and
+          # fall back to GET only for older instances that still accept it.
+          HTTP_CODE=$(curl -s -X POST "${WEBHOOK_URL}" \
             "${HEADERS[@]}" \
             -w "%{http_code}" \
             -o /tmp/response.txt)
+
+          if [ "$HTTP_CODE" = "405" ]; then
+            echo "POST returned 405, retrying with GET (legacy webhook)"
+            HTTP_CODE=$(curl -s -X GET "${WEBHOOK_URL}" \
+              "${HEADERS[@]}" \
+              -w "%{http_code}" \
+              -o /tmp/response.txt)
+          fi
           
           BODY=$(cat /tmp/response.txt 2>/dev/null || echo "")
           
           echo "HTTP Status Code: $HTTP_CODE"
           echo "Response Body: $BODY"
           
-          if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
+          if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ] || [ "$HTTP_CODE" = "202" ]; then
             echo "✅ Deployment triggered successfully (HTTP $HTTP_CODE)"
           else
             echo "❌ Failed to trigger deployment (HTTP $HTTP_CODE)"

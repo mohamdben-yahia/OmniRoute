@@ -201,7 +201,11 @@ ENV OMNIROUTE_MITM_STUB=1
 # Default raised 4096 → 6144 (#10060): the Next 16 production pass on a codebase
 # this size intermittently OOMs a build worker at 4 GB on memory-tight hosts.
 ARG OMNIROUTE_BUILD_MEMORY_MB=6144
-ENV NODE_OPTIONS="--max-old-space-size=${OMNIROUTE_BUILD_MEMORY_MB}"
+# The `:-6144` fallback matters for Coolify: it forwards every ARG as
+# `--build-arg NAME`, so an app env var that is defined-but-empty overrides the
+# ARG default and would leave NODE_OPTIONS="--max-old-space-size=" — node then
+# aborts every `npm run build` with "size_t is out of bounds", exit code 1.
+ENV NODE_OPTIONS="--max-old-space-size=${OMNIROUTE_BUILD_MEMORY_MB:-6144}"
 
 # Cap Next.js build worker pools. Next 16 defaults to `os.cpus().length - 1`
 # workers for page-data collection (31 on a 32-core builder); on memory-tight
@@ -233,7 +237,9 @@ ENV NODE_OPTIONS="--max-old-space-size=${OMNIROUTE_BUILD_MEMORY_MB}"
 # runner holds. Override for a big builder: `--build-arg
 # OMNIROUTE_BUILD_WORKERS=8`.
 ARG OMNIROUTE_BUILD_WORKERS=2
-ENV CIRCLE_NODE_TOTAL=${OMNIROUTE_BUILD_WORKERS}
+# Same empty-value guard as OMNIROUTE_BUILD_MEMORY_MB: a blank CIRCLE_NODE_TOTAL
+# makes Next compute a bogus worker count during page-data collection.
+ENV CIRCLE_NODE_TOTAL=${OMNIROUTE_BUILD_WORKERS:-2}
 
 # Webpack production builds skip the persistent cache unless this is 1 (see
 # next.config.mjs). Declared as ARG+ENV so `--build-arg
