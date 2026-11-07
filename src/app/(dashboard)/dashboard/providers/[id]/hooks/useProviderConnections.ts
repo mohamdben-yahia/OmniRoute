@@ -168,7 +168,6 @@ export interface UseProviderConnectionsReturn {
   batchDeleting: boolean;
   batchUpdating: "activate" | "deactivate" | null;
   batchRetesting: boolean;
-  batchRefreshingTokens: boolean;
   batchDeleteConfirmOpen: boolean;
   healthFilter: string;
   page: number;
@@ -236,7 +235,6 @@ export interface UseProviderConnectionsReturn {
   handleBatchDeleteOpenModal: () => void;
   handleBatchDeleteConfirm: (onAfter?: () => Promise<void>) => Promise<void>;
   handleBatchRetest: () => Promise<void>;
-  handleBatchRefreshToken: () => Promise<void>;
   handleBatchTestAll: () => Promise<void>;
 
   // Selection helpers
@@ -281,7 +279,6 @@ export function useProviderConnections(
   const [batchDeleting, setBatchDeleting] = useState(false);
   const [batchUpdating, setBatchUpdating] = useState<"activate" | "deactivate" | null>(null);
   const [batchRetesting, setBatchRetesting] = useState(false);
-  const [batchRefreshingTokens, setBatchRefreshingTokens] = useState(false);
   const [batchDeleteConfirmOpen, setBatchDeleteConfirmOpen] = useState(false);
 
   // ── filter / pagination state ───────────────────────────────────────────
@@ -1010,69 +1007,6 @@ export function useProviderConnections(
     }
   };
 
-  // Batch refresh tokens for selected OAuth connections
-  const handleBatchRefreshToken = async () => {
-    if (batchRefreshingTokens || selectedIds.size === 0) return;
-
-    // Filter to only OAuth connections from the selected set
-    const selectedConnections = (connections as any[]).filter((c: any) =>
-      selectedIds.has(c.id)
-    );
-    const oauthConnections = selectedConnections.filter((c: any) => c.authType === "oauth");
-
-    if (oauthConnections.length === 0) {
-      notify.warning(t("noOAuthConnectionsSelected"));
-      return;
-    }
-
-    if (oauthConnections.length > MAX_BULK_IDS) {
-      notify.warning(t("batchRefreshTokenLimit", { max: MAX_BULK_IDS }));
-      return;
-    }
-
-    setBatchRefreshingTokens(true);
-    let successCount = 0;
-    let failCount = 0;
-
-    try {
-      // Process each OAuth connection individually
-      for (const conn of oauthConnections) {
-        try {
-          const res = await fetch(`/api/providers/${conn.id}/refresh`, { method: "POST" });
-          const data = await res.json().catch(() => ({}));
-          if (res.ok && data.success) {
-            successCount++;
-          } else {
-            failCount++;
-            console.error(`Failed to refresh token for ${conn.id}:`, data.error);
-          }
-        } catch (error) {
-          failCount++;
-          console.error(`Error refreshing token for ${conn.id}:`, error);
-        }
-      }
-
-      // Refresh the connections list after all operations
-      await fetchConnections();
-
-      // Show appropriate notification based on results
-      if (successCount > 0 && failCount === 0) {
-        notify.success(t("batchTokenRefreshSuccess", { count: successCount }));
-      } else if (successCount > 0 && failCount > 0) {
-        notify.warning(
-          `${successCount} token(s) refreshed successfully, ${failCount} failed`
-        );
-      } else {
-        notify.error(t("batchTokenRefreshFailed", { count: failCount }));
-      }
-    } catch (error) {
-      console.error("Error during batch token refresh:", error);
-      notify.error("Network error during batch token refresh");
-    } finally {
-      setBatchRefreshingTokens(false);
-    }
-  };
-
   // ────────────────────────────────────────────────────────────────────────
   // Proxy distribution
   // ────────────────────────────────────────────────────────────────────────
@@ -1177,7 +1111,6 @@ export function useProviderConnections(
     batchDeleting,
     batchUpdating,
     batchRetesting,
-    batchRefreshingTokens,
     batchDeleteConfirmOpen,
     healthFilter,
     page,
@@ -1230,7 +1163,6 @@ export function useProviderConnections(
     handleBatchDeleteOpenModal,
     handleBatchDeleteConfirm,
     handleBatchRetest,
-    handleBatchRefreshToken,
     handleBatchTestAll,
 
     // Selection

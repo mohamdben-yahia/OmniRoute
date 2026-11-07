@@ -163,19 +163,6 @@ export const APIKEY_PROVIDERS_REGIONAL = {
     website: "https://z.ai/model-api",
     apiHint: "Create an API key at https://z.ai/manage-apikey/apikey-list.",
   },
-  freebuff: {
-    id: "freebuff",
-    alias: "fb",
-    name: "Freebuff (Codebuff)",
-    icon: "bolt",
-    color: "#F97316",
-    textIcon: "FB",
-    website: "https://www.codebuff.com",
-    apiHint:
-      "Free tier of www.codebuff.com (PKCE OAuth or pasted credentials.json). Catalog: mimo / minimax / kimi / deepseek / glm.",
-    subscriptionRisk: true,
-    riskNoticeVariant: "oauth",
-  },
   alibaba: {
     id: "alibaba",
     serviceKinds: ["llm"],

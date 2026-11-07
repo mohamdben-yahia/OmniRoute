@@ -93,8 +93,6 @@ type PreservedCriticalDbState = {
 type CriticalTableSpec = {
   table: string;
   maxRows?: number;
-  // Optional fast row-count to avoid materializing large tables.
-  countRows?: (db: SqliteDatabase) => number;
   readRows?: (db: SqliteDatabase) => JsonRecord[];
 };
 
@@ -133,29 +131,12 @@ const CRITICAL_DB_TABLES: CriticalTableSpec[] = [
   {
     table: "key_value",
     maxRows: 10_000,
-    // Avoid selecting the whole table blindly; only read allowed namespaces.
-    countRows(db) {
-      try {
-        const placeholders = [...SKIP_PRESERVE_NAMESPACES].map(() => "?").join(",");
-        const q = placeholders.length
-          ? `SELECT COUNT(*) as c FROM key_value WHERE namespace NOT IN (${placeholders})`
-          : `SELECT COUNT(*) as c FROM key_value`;
-        const row = (db.prepare(q).get(...[...SKIP_PRESERVE_NAMESPACES])) as { c?: number } | undefined;
-        return Number(row?.c ?? 0);
-      } catch {
-        return 0;
-      }
-    },
     readRows(db) {
-      try {
-        const placeholders = [...SKIP_PRESERVE_NAMESPACES].map(() => "?").join(",");
-        const q = placeholders
-          ? `SELECT namespace, key, value FROM key_value WHERE namespace NOT IN (${placeholders})`
-          : `SELECT namespace, key, value FROM key_value`;
-        return (db.prepare(q).all(...[...SKIP_PRESERVE_NAMESPACES]) as JsonRecord[]) ?? [];
-      } catch {
-        return [];
-      }
+      return (
+        (db.prepare("SELECT namespace, key, value FROM key_value").all() as JsonRecord[]) ?? []
+      ).filter(
+        (row) => typeof row.namespace !== "string" || !SKIP_PRESERVE_NAMESPACES.has(row.namespace)
+      );
     },
   },
   { table: "provider_connections", maxRows: 5_000 },
@@ -619,31 +600,13 @@ function captureCriticalDbState(sqliteFile: string): PreservedCriticalDbState {
     for (const tableSpec of CRITICAL_DB_TABLES) {
       if (!hasTable(probe, tableSpec.table)) continue;
 
-      // First, get a cheap row count (if available) to avoid materializing
-      // very large tables into memory. If count is unknown, fall back to
-      // a COUNT(*) query; only read rows when under the maxRows threshold.
-      let rowCount = 0;
-      try {
-        if (tableSpec.countRows) {
-          rowCount = tableSpec.countRows(probe);
-        } else {
-          const cnt = probe
-            .prepare(`SELECT COUNT(*) as c FROM ${quoteIdentifier(tableSpec.table)}`)
-            .get() as { c?: number } | undefined;
-          rowCount = Number(cnt?.c ?? 0);
-        }
-      } catch {
-        // If counting fails, skip reading this table to avoid OOM risk
-        snapshot.skippedTables.push({
-          table: tableSpec.table,
-          rowCount: -1,
-          maxRows: tableSpec.maxRows ?? DEFAULT_CRITICAL_TABLE_ROW_LIMIT,
-          reason: "count_failed",
-        });
-        continue;
-      }
-
       const maxRows = tableSpec.maxRows ?? DEFAULT_CRITICAL_TABLE_ROW_LIMIT;
+      const rows = (tableSpec.readRows?.(probe) ??
+        (probe
+          .prepare(`SELECT * FROM ${quoteIdentifier(tableSpec.table)}`)
+          .all() as JsonRecord[])) as JsonRecord[];
+      const rowCount = rows.length;
+
       if (rowCount === 0) continue;
 
       if (rowCount > maxRows) {
@@ -652,22 +615,6 @@ function captureCriticalDbState(sqliteFile: string): PreservedCriticalDbState {
           rowCount,
           maxRows,
           reason: "row_limit_exceeded",
-        });
-        continue;
-      }
-
-      // Safe to read rows (bounded by maxRows)
-      let rows: JsonRecord[] = [];
-      try {
-        rows = (tableSpec.readRows?.(probe) ??
-          (probe.prepare(`SELECT * FROM ${quoteIdentifier(tableSpec.table)}`).all() as JsonRecord[])) as
-          JsonRecord[];
-      } catch (e) {
-        snapshot.skippedTables.push({
-          table: tableSpec.table,
-          rowCount,
-          maxRows,
-          reason: "read_failed",
         });
         continue;
       }
@@ -1307,7 +1254,6 @@ export function getDbInstance(): SqliteDatabase {
   }
 
   if (failedProbePath) {
-    console.error('[DB] probe-failure check:', { failedProbePath, skipped: preservedCriticalState.skippedTables.length, captureSucceeded: preservedCriticalState.captureSucceeded });
     const hasUnsafeSkippedTables = preservedCriticalState.skippedTables.length > 0;
     const missingSnapshot = !preservedCriticalState.captureSucceeded;
     if (hasUnsafeSkippedTables || missingSnapshot) {
@@ -1504,12 +1450,6 @@ export function getDbInstance(): SqliteDatabase {
       `(DATA_DIR=${path.resolve(DATA_DIR)}, SQLITE_FILE=${path.resolve(sqliteFile)})`
   );
   return db;
-}
-
-// Test hook: expose captureCriticalDbState for unit tests to inspect snapshots
-// without going through the full startup probe/restore flow.
-export function captureCriticalDbStateForTesting(sqliteFile: string): PreservedCriticalDbState {
-  return captureCriticalDbState(sqliteFile);
 }
 
 /**
