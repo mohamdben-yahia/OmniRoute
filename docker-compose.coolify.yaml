@@ -17,10 +17,12 @@
 
 services:
   omniroute:
-    # Use the pre-built GHCR image. This skips the resource-heavy Next.js Webpack
-    # compilation on the VPS (which peaks at ~9.5 GB RSS and crashes with OOM on
-    # hosts under 16 GB), enabling instant, zero-build deployment in ~20 seconds.
-    image: ${OMNIROUTE_IMAGE:-ghcr.io/mohamdben-yahia/omniroute:latest}
+    build:
+      context: .
+      target: runner-base
+      args:
+        OMNIROUTE_BASE_PATH: ${OMNIROUTE_BASE_PATH:-}
+    image: omniroute:coolify
     restart: unless-stopped
     stop_grace_period: 40s
     environment:

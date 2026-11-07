@@ -500,9 +500,6 @@ export const DEVIN_DESKTOP_CONFIG = {
   callbackHost: "127.0.0.1",
 };
 
-// Backwards compatibility alias for Windsurf
-export const WINDSURF_CONFIG = DEVIN_DESKTOP_CONFIG;
-
 // Zed IDE credential import — no standard OAuth flow.
 // Credentials are extracted from the OS keychain via POST /api/providers/zed/import.
 // Docker environments fall back to manual token paste via POST /api/providers/zed/manual-import.
@@ -559,7 +556,6 @@ export const PROVIDERS = {
   KILOCODE: "kilocode",
   CLINE: "cline",
   CLINEPASS: "clinepass",
-  WINDSURF: "windsurf",
   DEVIN_DESKTOP: "devin-desktop",
   DEVIN_CLI: "devin-cli",
   TRAE: "trae",

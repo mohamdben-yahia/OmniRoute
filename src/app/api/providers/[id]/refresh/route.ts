@@ -69,16 +69,6 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       );
     }
 
-    if (provider === "windsurf") {
-      return NextResponse.json(
-        {
-          error: "Windsurf requires re-authentication",
-          requiresReauth: true,
-        },
-        { status: 400 }
-      );
-    }
-
     // Codex/OpenAI multi-account family-revocation cascade guard.
     // These two providers share the same Auth0 client_id and can revoke sibling
     // accounts when several refresh_tokens are rotated proactively. Other

@@ -408,9 +408,6 @@ const nextConfig = {
     };
     const nextDefaultSplitChunks = config.optimization?.splitChunks;
     config.optimization = config.optimization || {};
-    // Concurrency sweet-spot on constrained builders: 4 modules in parallel keeps
-    // RAM flat, finishing in ~2 min instead of timing out at 10 min.
-    config.parallelism = 4;
     config.optimization.splitChunks = {
       ...config.optimization.splitChunks,
       cacheGroups: {

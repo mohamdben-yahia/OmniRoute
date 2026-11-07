@@ -374,8 +374,9 @@ test("getDbInstance creates sqlite schema, metadata and applies migrations", ser
           .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?")
           .get("provider_connections")
       );
-      const meta = db.prepare("SELECT value FROM db_meta WHERE key = 'schema_version'").get();
-      assert.equal(meta.value, "1");
+      assert.deepEqual(db.prepare("SELECT value FROM db_meta WHERE key = 'schema_version'").get(), {
+        value: "1",
+      });
 
       const versions = db
         .prepare("SELECT version FROM _omniroute_migrations ORDER BY version")
@@ -903,14 +904,15 @@ test(
         const core = await importFresh("src/lib/db/core.ts");
 
         assert.throws(() => core.getDbInstance(), /Manual recovery required after probe failure/i);
-        assert.ok(fs.existsSync(sqliteFile) === false || listProbeFailedBackups(sqliteFile).length >= 1);
+        assert.equal(fs.existsSync(sqliteFile), false);
+        assert.equal(listProbeFailedBackups(sqliteFile).length >= 1, true);
 
         const restartedCore = await importFresh("src/lib/db/core.ts");
         assert.throws(
           () => restartedCore.getDbInstance(),
           /Manual recovery required after probe failure/i
         );
-        assert.ok(fs.existsSync(sqliteFile) === false || listProbeFailedBackups(sqliteFile).length >= 1);
+        assert.equal(fs.existsSync(sqliteFile), false);
         core.resetDbInstance();
       });
     } finally {
