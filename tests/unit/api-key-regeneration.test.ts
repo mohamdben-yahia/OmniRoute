@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { cleanupTempDataDir } from "../_setup/tempDataDir.ts";
 
 const TEST_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "omr-apikey-regen-"));
 process.env.DATA_DIR = TEST_DATA_DIR;
@@ -11,7 +12,7 @@ process.env.API_KEY_SECRET = "test-secret-regen";
 const core = await import("../../src/lib/db/core.ts");
 const apiKeysDb = await import("../../src/lib/db/apiKeys.ts");
 
-async function reset() {
+function reset() {
   core.resetDbInstance();
   apiKeysDb.resetApiKeyState();
   if (fs.existsSync(TEST_DATA_DIR)) {
@@ -20,14 +21,12 @@ async function reset() {
   fs.mkdirSync(TEST_DATA_DIR, { recursive: true });
 }
 
-test.beforeEach(async () => {
-  await reset();
+test.beforeEach(() => {
+  reset();
 });
 
-test.after(() => {
-  core.resetDbInstance();
-  apiKeysDb.resetApiKeyState();
-  fs.rmSync(TEST_DATA_DIR, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+test.after(async () => {
+  await cleanupTempDataDir(TEST_DATA_DIR);
 });
 
 test("regenerateApiKey creates a new key and invalidates the old one", async () => {

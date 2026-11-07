@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { cleanupTempDataDir } from "../_setup/tempDataDir.ts";
 
 const TEST_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "omr-apikey-lifecycle-"));
 process.env.DATA_DIR = TEST_DATA_DIR;
@@ -14,7 +15,7 @@ const apiKeysDb = await import("../../src/lib/db/apiKeys.ts");
 const ORIGINAL_OMNIROUTE_API_KEY = process.env.OMNIROUTE_API_KEY;
 const ORIGINAL_ROUTER_API_KEY = process.env.ROUTER_API_KEY;
 
-async function reset() {
+function reset() {
   core.resetDbInstance();
   apiKeysDb.resetApiKeyState();
   fs.rmSync(TEST_DATA_DIR, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
@@ -23,14 +24,12 @@ async function reset() {
   delete process.env.ROUTER_API_KEY;
 }
 
-test.beforeEach(async () => {
-  await reset();
+test.beforeEach(() => {
+  reset();
 });
 
-test.after(() => {
-  core.resetDbInstance();
-  apiKeysDb.resetApiKeyState();
-  fs.rmSync(TEST_DATA_DIR, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+test.after(async () => {
+  await cleanupTempDataDir(TEST_DATA_DIR);
   if (ORIGINAL_OMNIROUTE_API_KEY === undefined) delete process.env.OMNIROUTE_API_KEY;
   else process.env.OMNIROUTE_API_KEY = ORIGINAL_OMNIROUTE_API_KEY;
   if (ORIGINAL_ROUTER_API_KEY === undefined) delete process.env.ROUTER_API_KEY;

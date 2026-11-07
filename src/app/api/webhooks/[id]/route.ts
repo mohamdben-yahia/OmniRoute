@@ -8,7 +8,7 @@
 import { z } from "zod";
 import { NextResponse } from "next/server";
 import { sanitizeErrorMessage } from "@omniroute/open-sse/utils/error";
-import { getWebhook, updateWebhookRecord, deleteWebhook } from "@/lib/localDb";
+import { getWebhook, updateWebhook as updateWebhookRecord, deleteWebhook } from "@/lib/db/webhooks";
 import { validateBody, isValidationFailure } from "@/shared/validation/helpers";
 import { requireManagementAuth } from "@/lib/api/requireManagementAuth";
 import { encryptMetadata } from "@/lib/webhookDispatcher";
@@ -28,7 +28,7 @@ const updateWebhookSchema = z
     description: z.string().max(1000).optional(),
     enabled: z.boolean().optional(),
     kind: z.enum(WEBHOOK_KINDS).optional(),
-    metadata: z.record(z.string()).optional(),
+    metadata: z.record(z.string(), z.string()).optional(),
   })
   .strict();
 

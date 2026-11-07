@@ -60,9 +60,10 @@ test("resolvePublicCred('openference_id') returns the public PKCE client id shap
   assert.equal(v.length, 9);
 });
 
-test("resolvePublicCred('freebuff_id') returns the expected public client id format", () => {
-  const v = resolvePublicCred("freebuff_id");
-  assert.equal(v, "codebuff-cli");
+test("resolvePublicCred('muse_id') returns the public Meta Muse CLI numeric client id", () => {
+  const v = resolvePublicCred("muse_id");
+  assert.match(v, /^\d+$/);
+  assert.ok(v.length >= 12);
 });
 
 test("encode/decode roundtrip is stable across arbitrary plaintexts", () => {
