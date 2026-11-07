@@ -1,3 +1,9 @@
+---
+title: "Providers — Kiro Improvements Summary"
+version: 3.8.54
+lastUpdated: 2026-11-07
+---
+
 # Kiro Provider Improvements - Complete Summary
 
 ## Overview

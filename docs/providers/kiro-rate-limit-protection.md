@@ -1,3 +1,9 @@
+---
+title: "Providers — Kiro Rate Limit Protection"
+version: 3.8.54
+lastUpdated: 2026-11-07
+---
+
 # Kiro Provider Improvements
 
 ## Overview

@@ -1,3 +1,9 @@
+---
+title: "Providers — Freebuff CLI Emulator"
+version: 3.8.54
+lastUpdated: 2026-11-07
+---
+
 # Freebuff CLI Emulator
 
 > Internal architecture reference for the Freebuff provider's CLI emulation
