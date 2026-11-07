@@ -101,7 +101,7 @@ jobs:
             echo "Using Cloudflare Access Token for bypass"
           fi
           
-# Coolify's deploy API is POST /api/v1/deploy (Bearer auth).
+          # Coolify's deploy API is POST /api/v1/deploy (Bearer auth).
           # GET returns 405 Method Not Allowed on v4.2+, so POST first and
           # fall back to GET only for older instances that still accept it.
           HTTP_CODE=$(curl -s -X POST "${WEBHOOK_URL}" \
