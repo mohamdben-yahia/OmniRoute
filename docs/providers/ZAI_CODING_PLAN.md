@@ -1,3 +1,9 @@
+---
+title: "Providers — Z.AI Coding Plan"
+version: 3.8.54
+lastUpdated: 2026-11-07
+---
+
 # Z.AI Coding Plan Provider
 
 > **Provider ID:** `zai-coding-plan`

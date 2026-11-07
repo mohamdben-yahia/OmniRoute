@@ -189,7 +189,7 @@ async function loadFreebuffCredentials(
   options: FreebuffChatOptions,
 ): Promise<{ authToken: string; fingerprintId: string; fingerprintHash?: string } | null> {
   const { getProviderConnectionById, getProviderConnections } = await import(
-    "@/lib/localDb"
+    "@/lib/db/providers"
   );
   const { freebuffConnectionSchema } = await import(
     "@/shared/schemas/providers/freebuff"

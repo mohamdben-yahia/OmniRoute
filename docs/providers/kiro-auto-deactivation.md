@@ -1,3 +1,9 @@
+---
+title: "Providers — Kiro Auto-Deactivation"
+version: 3.8.54
+lastUpdated: 2026-11-07
+---
+
 # Kiro Auto-Deactivation on Quota Exhaustion
 
 ## Overview

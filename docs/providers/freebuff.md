@@ -1,3 +1,9 @@
+---
+title: "Providers — Freebuff"
+version: 3.8.54
+lastUpdated: 2026-11-07
+---
+
 # Freebuff Provider
 
 > Opt-in provider that wraps the Codebuff Free Tier CLI (`freebuff.exe`)

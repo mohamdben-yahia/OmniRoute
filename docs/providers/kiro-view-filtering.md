@@ -1,3 +1,9 @@
+---
+title: "Providers — Kiro View-Only Enabled Accounts"
+version: 3.8.54
+lastUpdated: 2026-11-07
+---
+
 # Kiro Provider: View-Only Enabled Accounts (Task 4)
 
 ## Overview

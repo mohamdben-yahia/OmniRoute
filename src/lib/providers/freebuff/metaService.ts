@@ -101,7 +101,7 @@ export const upstreamError = (status: number, message: string): FreebuffMetaErro
  * @returns parsed FreebuffConnection or throws FreebuffMetaError.
  */
 async function loadFreebuffConnection(connectionId: string): Promise<FreebuffConnection> {
-  const { getProviderConnectionById } = await import("@/lib/localDb");
+  const { getProviderConnectionById } = await import("@/lib/db/providers");
   const row = await getProviderConnectionById(connectionId);
   if (!row) throw notFoundError(`Connection ${connectionId} not found`);
   if (row.provider !== "freebuff") {
@@ -139,7 +139,7 @@ async function loadFreebuffConnection(connectionId: string): Promise<FreebuffCon
 async function listFreebuffConnections(): Promise<
   Array<{ id: string; connection: FreebuffConnection }>
 > {
-  const { getProviderConnections } = await import("@/lib/localDb");
+  const { getProviderConnections } = await import("@/lib/db/providers");
   const all = (await getProviderConnections({ provider: "freebuff" })) as Array<{
     id: string;
     provider: string;
@@ -171,7 +171,7 @@ async function saveFreebuffConnection(
   connectionId?: string,
 ): Promise<{ id: string }> {
   const { getProviderConnectionById, createProviderConnection, updateProviderConnection } =
-    await import("@/lib/localDb");
+    await import("@/lib/db/providers");
   const payload = JSON.stringify(connection);
 
   if (connectionId) {
@@ -354,7 +354,7 @@ export async function releaseSession(connectionId: string): Promise<void> {
   } catch {
     // best-effort; surface deletion regardless
   }
-  const { deleteProviderConnection } = await import("@/lib/localDb");
+  const { deleteProviderConnection } = await import("@/lib/db/providers/deletion");
   await deleteProviderConnection(connectionId);
 }
 

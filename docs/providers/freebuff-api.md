@@ -1,3 +1,9 @@
+---
+title: "Providers — Freebuff API Reference"
+version: 3.8.54
+lastUpdated: 2026-11-07
+---
+
 # Freebuff Provider — API Reference
 
 > Developer reference for the OmniRoute HTTP surface exposed by the
