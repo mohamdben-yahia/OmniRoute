@@ -17,20 +17,19 @@
 
 services:
   omniroute:
-    build:
-      context: .
-      target: runner-base
-      args:
-        OMNIROUTE_BASE_PATH: ${OMNIROUTE_BASE_PATH:-}
-        # Pin these explicitly: Coolify forwards every app env var as
-        # `--build-arg NAME`, and an empty value overrides the Dockerfile
-        # default. Empty OMNIROUTE_BUILD_MEMORY_MB makes
-        # NODE_OPTIONS="--max-old-space-size=" and `npm run build` exits 1;
-        # empty OMNIROUTE_BUILD_WORKERS blanks CIRCLE_NODE_TOTAL.
-        OMNIROUTE_USE_TURBOPACK: "0"
-        OMNIROUTE_BUILD_MEMORY_MB: "6144"
-        OMNIROUTE_BUILD_WORKERS: "2"
-    image: omniroute:coolify
+    # Pull the image that .github/workflows/deploy-coolify.yml already built
+    # and pushed, instead of compiling Next.js on the VPS.
+    #
+    # Why: the GitHub build of the same commit succeeds (run 42372703384), but
+    # Coolify's `docker compose build` on the VPS fails inside `npm run build`
+    # with exit code 1, which kept prod pinned at v3.8.50. Pulling the verified
+    # image removes that build entirely (deploy drops from ~20 min to seconds)
+    # and guarantees the running container is exactly what CI built.
+    #
+    # The package is public, so no registry credentials are needed. Override
+    # OMNIROUTE_IMAGE to pin a specific sha tag for a rollback.
+    image: ${OMNIROUTE_IMAGE:-ghcr.io/hotopensourcing/omniroute:latest}
+    pull_policy: always
     restart: unless-stopped
     stop_grace_period: 40s
     environment:
