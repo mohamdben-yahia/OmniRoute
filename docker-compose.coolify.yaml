@@ -20,15 +20,14 @@ services:
     # Pull the image that .github/workflows/deploy-coolify.yml already built
     # and pushed, instead of compiling Next.js on the VPS.
     #
-    # Why: the GitHub build of the same commit succeeds (run 42372703384), but
-    # Coolify's `docker compose build` on the VPS fails inside `npm run build`
-    # with exit code 1, which kept prod pinned at v3.8.50. Pulling the verified
-    # image removes that build entirely (deploy drops from ~20 min to seconds)
-    # and guarantees the running container is exactly what CI built.
+    # The registry must match the repo Coolify deploys: production builds from
+    # mohamdben-yahia/OmniRoute, whose workflow publishes to
+    # ghcr.io/mohamdben-yahia/omniroute. Pointing at the org package made every
+    # deploy fail with "403 Forbidden" once HotOpenSourcing/OmniRoute was
+    # recreated and its package stopped being public.
     #
-    # The package is public, so no registry credentials are needed. Override
-    # OMNIROUTE_IMAGE to pin a specific sha tag for a rollback.
-    image: ${OMNIROUTE_IMAGE:-ghcr.io/hotopensourcing/omniroute:latest}
+    # Override OMNIROUTE_IMAGE to pin a specific sha tag for a rollback.
+    image: ${OMNIROUTE_IMAGE:-ghcr.io/mohamdben-yahia/omniroute:latest}
     pull_policy: always
     restart: unless-stopped
     stop_grace_period: 40s
