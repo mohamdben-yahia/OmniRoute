@@ -4,7 +4,7 @@
 # trusts the compromised eMudhra intermediates (https://emudhra.we-have-a-problem.com/).
 # 26.12.1 is the first 26.x that rejects them; tests/unit/build/docker-ca-baseline.test.mjs
 # keeps it from going below that.
-FROM node:26.12.1-trixie-slim AS base
+FROM node:26.13.1-trixie-slim AS base
 WORKDIR /app
 
 # Mirrors for builders whose network cannot reach the default sources
@@ -313,6 +313,10 @@ ENV OMNIROUTE_MIGRATIONS_DIR=/app/migrations
 # Docker healthcheck script — not traced by Next.js standalone output, so copy
 # it explicitly. The HEALTHCHECK CMD references it as `node healthcheck.mjs`.
 COPY --chown=node:node --from=builder /app/scripts/dev/healthcheck.mjs ./healthcheck.mjs
+
+# Next.js standalone tracing omits the root LICENSE, so the published image shipped
+# without the license text. Copy it explicitly.
+COPY --chown=node:node --from=builder /app/LICENSE ./LICENSE
 
 # Every COPY above hands its files to the baked-in `node` non-root user
 # (UID/GID 1000) at copy time. Do NOT add a `RUN chown -R node:node /app`
